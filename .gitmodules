@@ -1,6 +1,8 @@
 [submodule "Processing"]
 	path = Processing
 	url = https://github.com/Solidsilver/Processing
+	branch = master
 [submodule "land-sources"]
 	path = land-sources
 	url = git@github.com:Solidsilver/land-sources.git
+	branch = master
