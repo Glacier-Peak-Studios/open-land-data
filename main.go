@@ -25,7 +25,7 @@ func main() {
 	// jobs := make(chan [2]string, jobCount)
 	jobs := make(chan string, jobCount)
 	results := make(chan string, jobCount)
-	workerCount := 4
+	workerCount := 8
 	for i := 0; i < workerCount; i++ {
 		go worker2(jobs, results)
 	}
@@ -80,17 +80,13 @@ func worker2(jobs <-chan string, results chan<- string) {
 			}
 
 		}
-		// sourceDir := string(job[0])
-		// fName := string(job[1])
-		// fileFull := sourceDir + "/" + fName
-		// logMsg(results, fName, "Processing Source")
-		// err := processSource(sourceDir, fName)
+		// Remove zipfiles when done with dir:
+		// zipfiles, err := utils.WalkMatch(job, "*.zip")
+		// for i := 0; i < len(zipfiles); i++ {
+		// 	err = os.Remove(zipfiles[i])
+		// }
 		// if err != nil {
-		// 	logMsg(results, fileFull, "Source failed!")
-		// 	logMsg(results, fileFull, err.Error())
-		// } else {
-		// 	logMsg(results, fName, "Finished processing source")
-		// 	logMsg(results, fName, "Job done")
+		// 	log.Print(err)
 		// }
 	}
 }
@@ -193,10 +189,12 @@ func processGeoJSON(path, filename string) error {
 	err = generateMBTiles(mbtiles, geojson)
 	err = generateMBTiles(mbtilesLabels, geojsonLabels)
 	err = combineMBTiles(combined, mbtiles, mbtilesLabels)
-	// _, err = runCommand(false, "tile-join", "-f", "-o", fileWithPath+"-combined.mbtiles", fileWithPath+".mbtiles", fileWithPath+"-labels.mbtiles")
-	// if err != nil {
-	// 	return err
-	// }
+	if err != nil {
+		return err
+	}
+	err = os.Remove(geojsonLabels)
+	err = os.Remove(mbtiles)
+	err = os.Remove(mbtilesLabels)
 	return err
 }
 
