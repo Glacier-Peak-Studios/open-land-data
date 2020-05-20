@@ -19,21 +19,25 @@ import (
 )
 
 func main() {
-	jobs := make(chan [2]string, 300)
-	results := make(chan string, 300)
-	jobCount := 16
-	for i := 0; i < jobCount; i++ {
-		go worker(jobs, results)
+	sources, _ := utils.WalkMatch("./land-sources", "*.json")
+	jobCount := len(sources)
+	fmt.Println("Sources:", jobCount)
+	// jobs := make(chan [2]string, jobCount)
+	jobs := make(chan string, jobCount)
+	results := make(chan string, jobCount)
+	workerCount := 4
+	for i := 0; i < workerCount; i++ {
+		go worker2(jobs, results)
 	}
-	processDirs("./land-sources", jobs)
+	processDirs2("./land-sources", jobs)
 	close(jobs)
 
-	for result := range results {
-		fmt.Println(result)
-	}
-	// for i := 0; i < 300; i++ {
-	// 	fmt.Println(<-results)
+	// for result := range results {
+	// 	fmt.Println(result)
 	// }
+	for i := 0; i < jobCount*3; i++ {
+		fmt.Println(<-results)
+	}
 
 }
 
@@ -49,7 +53,45 @@ func worker(jobs <-chan [2]string, results chan<- string) {
 			logMsg(results, fileFull, err.Error())
 		} else {
 			logMsg(results, fName, "Finished processing source")
+			logMsg(results, fName, "Job done")
 		}
+	}
+}
+
+func worker2(jobs <-chan string, results chan<- string) {
+	for job := range jobs {
+		files, err := ioutil.ReadDir(job)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, f := range files {
+			if !f.IsDir() && filepath.Ext(f.Name()) == ".json" {
+				// processDirs(job+"/"+f.Name(), jobs)
+				err := processSource(job, f.Name())
+				fileFull := job + "/" + f.Name()
+				logMsg(results, f.Name(), "Processing Source")
+				if err != nil {
+					logMsg(results, fileFull, "Source failed!")
+					logMsg(results, fileFull, err.Error())
+				} else {
+					logMsg(results, f.Name(), "Finished processing source")
+					logMsg(results, f.Name(), "Job done")
+				}
+			}
+
+		}
+		// sourceDir := string(job[0])
+		// fName := string(job[1])
+		// fileFull := sourceDir + "/" + fName
+		// logMsg(results, fName, "Processing Source")
+		// err := processSource(sourceDir, fName)
+		// if err != nil {
+		// 	logMsg(results, fileFull, "Source failed!")
+		// 	logMsg(results, fileFull, err.Error())
+		// } else {
+		// 	logMsg(results, fName, "Finished processing source")
+		// 	logMsg(results, fName, "Job done")
+		// }
 	}
 }
 
@@ -77,6 +119,22 @@ func processDirs(sourceDir string, jobs chan<- [2]string) {
 
 	}
 }
+func processDirs2(sourceDir string, jobs chan<- string) {
+	files, err := ioutil.ReadDir(sourceDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	count := 0
+	for _, f := range files {
+		if f.IsDir() {
+			count++
+			processDirs2(sourceDir+"/"+f.Name(), jobs)
+		}
+	}
+	if count == 0 {
+		jobs <- sourceDir
+	}
+}
 
 func processSource(dir string, file string) error {
 	pathedFile := dir + "/" + file
@@ -97,7 +155,7 @@ func processSource(dir string, file string) error {
 	}
 	if filepath.Ext(dlFile) == ".zip" {
 		if !dirExists(dlPath + "/" + getFnameOnly(dlFile)) {
-			_, err := runCommand(true, "unzip", dlFile, "-d", dlPath+"/"+getFnameOnly(dlFile))
+			_, err := runCommand(true, "unzip", "-j", dlFile, "-d", dlPath+"/"+getFnameOnly(dlFile))
 			if err != nil {
 				return err
 			}
@@ -116,32 +174,62 @@ func processSource(dir string, file string) error {
 		return processGeoJSON(dlPath, getFnameOnly(dlFile))
 	case "shp":
 		return processShp(dlPath+"/"+getFnameOnly(dlFile), fname, getFnameOnly(file))
+	default:
+		return errors.New("Filetype not supported: " + filetype)
 	}
-
-	return nil
 }
 
 func processGeoJSON(path, filename string) error {
-	filename = getFnameOnly(filename)
-	fileWithPath := path + "/" + filename
+	fileWithPath := path + "/" + getFnameOnly(filename)
 	geojson := fileWithPath + ".geojson"
-	labels := fileWithPath + "-labels.geojson"
+	geojsonLabels := fileWithPath + "-labels.geojson"
+	mbtiles := fileWithPath + ".mbtiles"
+	mbtilesLabels := fileWithPath + "-labels.mbtiles"
+	combined := fileWithPath + "-combined.mbtiles"
 	fmt.Println("Processing geoJson: " + geojson)
+	var err error
 
-	err := runAndWriteCommand(labels, "geojson-polygon-labels", "--label=polylabel", "--include-minzoom=6-11", geojson)
-	if err != nil {
+	err = generateLabels(geojsonLabels, geojson)
+	err = generateMBTiles(mbtiles, geojson)
+	err = generateMBTiles(mbtilesLabels, geojsonLabels)
+	err = combineMBTiles(combined, mbtiles, mbtilesLabels)
+	// _, err = runCommand(false, "tile-join", "-f", "-o", fileWithPath+"-combined.mbtiles", fileWithPath+".mbtiles", fileWithPath+"-labels.mbtiles")
+	// if err != nil {
+	// 	return err
+	// }
+	return err
+}
+
+func generateLabels(newfile, geojson string) error {
+	if !fileExists(geojson) {
+		return errors.New("Cannot create label! geojson doesn't exist: " + geojson)
+	}
+	if !fileExists(newfile) {
+		return runAndWriteCommand(newfile, "geojson-polygon-labels", "--label=polylabel", "--include-minzoom=6-11", geojson)
+	}
+	return nil
+}
+
+func generateMBTiles(newfile, geojson string) error {
+	if !fileExists(geojson) {
+		return errors.New("Cannot create mbtile! geojson doesn't exist: " + geojson)
+	}
+	if !fileExists(newfile + ".mbtiles") {
+		_, err := runCommand(false, "tippecanoe", "-f", "-z11", "-o", newfile, geojson)
 		return err
 	}
-	_, err = runCommand(false, "tippecanoe", "-z11", "-o", fileWithPath+".mbtiles", geojson)
-	if err != nil {
-		return err
+	return nil
+}
+
+func combineMBTiles(newfile, mbtiles, mbtilesLabels string) error {
+	if !fileExists(mbtiles) {
+		return errors.New("Cannot join mbtiles! base mbtile doesn't exist: " + mbtiles)
 	}
-	_, err = runCommand(false, "tippecanoe", "-z11", "-o", fileWithPath+"-labels.mbtiles", labels)
-	if err != nil {
-		return err
+	if !fileExists(mbtilesLabels) {
+		return errors.New("Cannot join mbtiles! labels mbtile doesn't exist: " + mbtilesLabels)
 	}
-	_, err = runCommand(false, "tile-join", "-o", fileWithPath+"-combined.mbtiles", fileWithPath+".mbtiles", fileWithPath+"-labels.mbtiles")
-	if err != nil {
+	if !fileExists(newfile + ".mbtiles") {
+		_, err := runCommand(false, "tile-join", "-f", "-o", newfile, mbtiles, mbtilesLabels)
 		return err
 	}
 	return nil
@@ -154,7 +242,11 @@ func processShp(path, filename, fileOutName string) error {
 			return err
 		}
 		if len(shapefiles) > 1 {
-			return errors.New("Multiple shapefiles in zip, none specified")
+			fmt.Println("shapefiles-in-dir: ", shapefiles)
+			return errors.New("Multiple shapefiles in zip, none specified in source")
+		}
+		if len(shapefiles) == 0 {
+			return errors.New("No shapefiles in folder: " + path)
 		}
 		filename = filepath.Base(shapefiles[0])
 	}
@@ -167,7 +259,7 @@ func processShp(path, filename, fileOutName string) error {
 	// fmt.Println(geojson + ", " + shapefile)
 	fmt.Println("Processing shapefile: " + shapefile)
 
-	_, err := runCommand(true, "ogr2ogr", "-f", "GeoJSON", "-t_srs", "crs:84", geojson, shapefile)
+	_, err := runCommand(false, "ogr2ogr", "-f", "GeoJSON", "-t_srs", "crs:84", geojson, shapefile)
 	if err != nil {
 		return err
 	}
@@ -267,12 +359,12 @@ func runCommand(silent bool, cmd string, args ...string) (string, error) {
 	// }
 	// fmt.Println("Running cmd: " + cmd + " " + strings.Join(args, " "))
 	out, err := exec.Command(cmd, args...).Output()
-	if err != nil {
-		fmt.Println("Could not run cmd: " + cmd + " " + strings.Join(args, " "))
-		return "", err
-	}
 	if !silent {
 		fmt.Printf("%s\n", out)
+	}
+	if err != nil {
+		fmt.Println("Command unsuccessful: " + cmd + " " + strings.Join(args, " "))
+		return "", err
 	}
 	return string(out), nil
 }
