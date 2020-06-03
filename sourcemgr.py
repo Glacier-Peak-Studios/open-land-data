@@ -72,8 +72,8 @@ if len(sys.argv) < 2 or len(sys.argv) > 3:
     print("\nWhere <sourcdir> is the root folder of the .json sources.")
     print("If <sourcdier> is ommited, it will default to './land-sources'")
     print("\nMODES")
-    print("\t-i\tConvert from csv to json")
-    print("\t-o\tConvert from json to csv")
+    print("\t-j\tConvert from csv to json")
+    print("\t-c\tConvert from json to csv")
     print("\nNote: this script will automaticaly overwrite all files")
 else:
     mode = sys.argv[1]
@@ -82,11 +82,11 @@ else:
     else:
         source_dir = sys.argv[2]
     source_dir = os.path.abspath(source_dir) + "/"
-    if (mode == "-i"):
+    if (mode == "-c"):
         print('Compiling sources from dir: ' + source_dir)
         compileJSONs(source_dir)
         jsonToCSV("combined-sources.json")
         os.remove("combined-sources.json")
-    elif (mode == "-o"):
+    elif (mode == "-j"):
         csvToJSONs(source_dir, "combined-sources.csv")
 
