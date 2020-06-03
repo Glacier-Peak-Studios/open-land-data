@@ -131,3 +131,4 @@ styles
 # IDE
 .vscode/
 main
+*.csv
