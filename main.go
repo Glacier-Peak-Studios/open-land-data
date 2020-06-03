@@ -80,14 +80,24 @@ func worker2(jobs <-chan string, results chan<- string) {
 			}
 
 		}
+		outdir := strings.Replace(job, "land-sources", "generated", 1)
 		// Remove zipfiles when done with dir:
-		// zipfiles, err := utils.WalkMatch(job, "*.zip")
-		// for i := 0; i < len(zipfiles); i++ {
-		// 	err = os.Remove(zipfiles[i])
-		// }
-		// if err != nil {
-		// 	log.Print(err)
-		// }
+		fmt.Println("Cleaning job: ", outdir, "*.zip")
+		zipfiles, err := utils.WalkMatch(outdir, "*.zip")
+		if err != nil {
+			log.Print(err)
+		}
+		for i := 0; i < len(zipfiles); i++ {
+			fmt.Println("Removing zipfile: " + zipfiles[i])
+			err = os.Remove(zipfiles[i])
+			folder := outdir + "/" + getFnameOnly(zipfiles[i])
+			fmt.Println("Removing folder: ", folder)
+			err = os.RemoveAll(folder)
+			// err = os.Remove(zipfiles[i])
+		}
+		if err != nil {
+			log.Print(err)
+		}
 	}
 }
 
@@ -185,16 +195,26 @@ func processGeoJSON(path, filename string) error {
 	fmt.Println("Processing geoJson: " + geojson)
 	var err error
 
-	err = generateLabels(geojsonLabels, geojson)
-	err = generateMBTiles(mbtiles, geojson)
-	err = generateMBTiles(mbtilesLabels, geojsonLabels)
-	err = combineMBTiles(combined, mbtiles, mbtilesLabels)
+	if !fileExists(combined) {
+		err = generateLabels(geojsonLabels, geojson)
+		err = generateMBTiles(mbtiles, geojson)
+		err = generateMBTiles(mbtilesLabels, geojsonLabels)
+		err = combineMBTiles(combined, mbtiles, mbtilesLabels)
+	} else {
+		fmt.Println("Generated file exists, skipping: ", combined)
+	}
 	if err != nil {
 		return err
 	}
-	err = os.Remove(geojsonLabels)
-	err = os.Remove(mbtiles)
-	err = os.Remove(mbtilesLabels)
+	if fileExists(geojsonLabels) {
+		err = os.Remove(geojsonLabels)
+	}
+	if fileExists(mbtiles) {
+		err = os.Remove(mbtiles)
+	}
+	if fileExists(mbtilesLabels) {
+		err = os.Remove(mbtilesLabels)
+	}
 	return err
 }
 
@@ -254,16 +274,18 @@ func processShp(path, filename, fileOutName string) error {
 	fileWithPath := path + "/" + filename
 	geojson := basepath + "/" + fileOutName + ".geojson"
 	shapefile := fileWithPath + ".shp"
+	var err error
 	// fmt.Println(geojson + ", " + shapefile)
 	fmt.Println("Processing shapefile: " + shapefile)
-
-	_, err := runCommand(false, "ogr2ogr", "-f", "GeoJSON", "-t_srs", "crs:84", geojson, shapefile)
-	if err != nil {
-		return err
+	if !fileExists(shapefile) {
+		_, err := runCommand(false, "ogr2ogr", "-f", "GeoJSON", "-t_srs", "crs:84", geojson, shapefile)
+		if err != nil {
+			return err
+		}
 	}
 	err = processGeoJSON(basepath, fileOutName)
 
-	return nil
+	return err
 }
 
 func fileExists(filename string) bool {
