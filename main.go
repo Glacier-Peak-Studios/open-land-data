@@ -13,7 +13,6 @@ func main() {
 	sources, _ := utils.WalkMatch("./land-sources", "*.json")
 	jobCount := len(sources)
 	fmt.Println("Sources:", jobCount)
-	// jobs := make(chan [2]string, jobCount)
 	jobs := make(chan string, jobCount)
 	results := make(chan string, jobCount)
 	workerCount := 8
@@ -21,7 +20,7 @@ func main() {
 	for i := 0; i < workerCount; i++ {
 		go worker(jobs, results)
 	}
-	processDirs2("./land-sources", jobs)
+	queueSources("./land-sources", jobs)
 	close(jobs)
 
 	// for result := range results {
@@ -41,7 +40,6 @@ func worker(jobs <-chan string, results chan<- string) {
 		}
 		for _, f := range files {
 			if !f.IsDir() && filepath.Ext(f.Name()) == ".json" {
-				// processDirs(job+"/"+f.Name(), jobs)
 				err := utils.ProcessSource(job, f.Name())
 				fileFull := job + "/" + f.Name()
 				logMsg(results, f.Name(), "Processing Source")
@@ -64,26 +62,7 @@ func logMsg(results chan<- string, source, msg string) {
 	results <- toSend
 }
 
-func processDirs(sourceDir string, jobs chan<- [2]string) {
-	files, err := ioutil.ReadDir(sourceDir)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, f := range files {
-		if f.IsDir() {
-			processDirs(sourceDir+"/"+f.Name(), jobs)
-		} else {
-			if filepath.Ext(f.Name()) == ".json" {
-				jobToAdd := [2]string{sourceDir, f.Name()}
-				jobs <- jobToAdd
-				// fmt.Println("Added job:", jobToAdd[0], jobToAdd[1])
-			}
-
-		}
-
-	}
-}
-func processDirs2(sourceDir string, jobs chan<- string) {
+func queueSources(sourceDir string, jobs chan<- string) {
 	files, err := ioutil.ReadDir(sourceDir)
 	if err != nil {
 		log.Fatal(err)
@@ -92,7 +71,7 @@ func processDirs2(sourceDir string, jobs chan<- string) {
 	for _, f := range files {
 		if f.IsDir() {
 			count++
-			processDirs2(sourceDir+"/"+f.Name(), jobs)
+			queueSources(sourceDir+"/"+f.Name(), jobs)
 		}
 	}
 	if count == 0 {

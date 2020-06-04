@@ -76,8 +76,8 @@ func WalkMatch(root string, pattern string) ([]string, error) {
 // CleanJob cleans up folders and .zip files in the target job's directory
 func CleanJob(job string) error {
 	outdir := strings.Replace(job, "land-sources", "generated", 1)
-	// Remove zipfiles when done with dir:
-	fmt.Println("Cleaning job: ", outdir, "*.zip")
+	fmt.Println("Cleaning job: ", outdir)
+	// Remove zipfiles when done with job:
 	zipfiles, err := WalkMatch(outdir, "*.zip")
 	if err != nil {
 		log.Print(err)
@@ -89,6 +89,15 @@ func CleanJob(job string) error {
 		fmt.Println("Removing folder: ", folder)
 		err = os.RemoveAll(folder)
 		// err = os.Remove(zipfiles[i])
+	}
+	// Remove kmzfiles when done with job:
+	kmzfiles, err := WalkMatch(outdir, "*.kmz")
+	if err != nil {
+		log.Print(err)
+	}
+	for i := 0; i < len(kmzfiles); i++ {
+		fmt.Println("Removing kmzfile: " + kmzfiles[i])
+		err = os.Remove(kmzfiles[i])
 	}
 	return err
 }

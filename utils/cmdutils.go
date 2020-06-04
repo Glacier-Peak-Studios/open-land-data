@@ -8,12 +8,7 @@ import (
 )
 
 func runAndWriteCommand(outName, cmdName string, args ...string) error {
-	// for i := 0; i < len(args); i++ {
-	// 	args[i] = strings.Replace(args[i], " ", "\\ ", -1)
-	// }
-	// fmt.Println("Running cmd: " + cmdName + " " + strings.Join(args, " ") + " > " + outName)
 	cmd := exec.Command(cmdName, args...)
-
 	outfile, err := os.Create(outName)
 	if err != nil {
 		panic(err)
@@ -31,10 +26,6 @@ func runAndWriteCommand(outName, cmdName string, args ...string) error {
 }
 
 func runCommand(silent bool, cmd string, args ...string) (string, error) {
-	// for i := 0; i < len(args); i++ {
-	// 	args[i] = strings.Replace(args[i], " ", "\\ ", -1)
-	// }
-	// fmt.Println("Running cmd: " + cmd + " " + strings.Join(args, " "))
 	out, err := exec.Command(cmd, args...).Output()
 	if !silent {
 		fmt.Printf("%s\n", out)
