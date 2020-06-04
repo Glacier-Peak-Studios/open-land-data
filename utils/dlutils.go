@@ -28,6 +28,8 @@ func downloadFile(path string, urlStr string) (string, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// fmt.Println("URL: " + urlStr)
+	// fmt.Println("URL scheme is: " + u.Scheme)
 	switch u.Scheme {
 	case "http":
 		return downloadHTTP(path, urlStr)
@@ -108,7 +110,7 @@ func downloadBox(path, boxpath string) (string, error) {
 }
 
 func downloadLocalFile(pathOut, pathIn string) (string, error) {
-	strings.Replace(pathIn, "file://", "", 1)
+	pathIn = strings.Replace(pathIn, "file://", "", 1)
 	_, err := runCommand(false, "cp", "-r", pathIn, pathOut)
 	if err != nil {
 		fmt.Println("Could not download local file")
