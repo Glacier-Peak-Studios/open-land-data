@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/cavaliercoder/grab"
@@ -35,9 +36,9 @@ func downloadFile(path string, urlStr string) (string, error) {
 	case "ftp":
 		return downloadFTP(path, u)
 	case "box":
-		return downloadBox(path, u)
+		return downloadBox(path, urlStr)
 	case "file":
-		return downloadLocalFile(path, u)
+		return downloadLocalFile(path, urlStr)
 	default:
 		return "", errors.New("URL type not supported")
 	}
@@ -97,10 +98,21 @@ func downloadFTP(path string, u *url.URL) (string, error) {
 	return path + "/" + filepath.Base(u.Path), nil
 }
 
-func downloadBox(path string, u *url.URL) (string, error) {
-	return "", nil
+func downloadBox(path, boxpath string) (string, error) {
+	boxdir, exists := os.LookupEnv("BOXPATH")
+	if !exists {
+		return "", errors.New("Failed to fetch box source: BOXPATH env not set")
+	}
+	pathIn := strings.Replace(boxpath, "box://", "file://"+boxdir+"/", 1)
+	return downloadLocalFile(path, pathIn)
 }
 
-func downloadLocalFile(path string, u *url.URL) (string, error) {
-	return "", nil
+func downloadLocalFile(pathOut, pathIn string) (string, error) {
+	strings.Replace(pathIn, "file://", "", 1)
+	_, err := runCommand(false, "cp", "-r", pathIn, pathOut)
+	if err != nil {
+		fmt.Println("Could not download local file")
+		return "", err
+	}
+	return pathOut + "/" + getFnameOnly(pathIn), nil
 }
