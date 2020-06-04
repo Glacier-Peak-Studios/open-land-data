@@ -53,7 +53,7 @@ func worker(jobs <-chan string, results chan<- string) {
 			}
 
 		}
-		// utils.CleanJob(job)
+		utils.CleanJob(job)
 	}
 }
 
