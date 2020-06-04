@@ -17,7 +17,7 @@ import (
 )
 
 // DownloadFile saves a file to the specified path
-func DownloadFile(path string, urlStr string) (string, error) {
+func downloadFile(path string, urlStr string) (string, error) {
 	err := os.MkdirAll(path, 0755)
 	// Force unchecked certs
 	if err != nil {
@@ -34,6 +34,10 @@ func DownloadFile(path string, urlStr string) (string, error) {
 		return downloadHTTP(path, urlStr)
 	case "ftp":
 		return downloadFTP(path, u)
+	case "box":
+		return downloadBox(path, u)
+	case "file":
+		return downloadLocalFile(path, u)
 	default:
 		return "", errors.New("URL type not supported")
 	}
@@ -93,31 +97,10 @@ func downloadFTP(path string, u *url.URL) (string, error) {
 	return path + "/" + filepath.Base(u.Path), nil
 }
 
-func getFnameOnly(file string) string {
-	var filename = filepath.Base(file)
-	var extension = filepath.Ext(filename)
-	return filename[0 : len(filename)-len(extension)]
+func downloadBox(path string, u *url.URL) (string, error) {
+	return "", nil
 }
 
-// WalkMatch gets all files in root with specified pattern
-func WalkMatch(root string, pattern string) ([]string, error) {
-	var matches []string
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		if matched, err := filepath.Match(pattern, filepath.Base(path)); err != nil {
-			return err
-		} else if matched {
-			matches = append(matches, path)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return matches, nil
+func downloadLocalFile(path string, u *url.URL) (string, error) {
+	return "", nil
 }

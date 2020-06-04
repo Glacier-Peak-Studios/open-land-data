@@ -132,3 +132,5 @@ styles
 .vscode/
 main
 *.csv
+failures.txt
+runlog.txt

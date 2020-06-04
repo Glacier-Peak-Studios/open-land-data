@@ -24,8 +24,12 @@ def writeJSONs(sourcedir: str, jsonArr):
         country = jsON.pop("country")
         subdiv = jsON.pop("subdivision")
         fname = jsON.pop("filename")
-        props = json.loads(jsON["properties"].replace("\'", "\""))
-        jsON['properties'] = props
+        propStr = jsON["properties"]
+        if propStr is not None:
+            props = json.loads(propStr.replace("\'", "\""))
+            jsON['properties'] = props
+        else:
+            jsON['properties'] = None
         specStr = jsON["species"]
         if specStr is not None:
             specStr = specStr.replace("\', \'", "\", \"").replace("[\'", "[\"").replace("\']", "\"]").replace("\', \"", "\", \"").replace("\", \'", "\", \"")
@@ -33,8 +37,9 @@ def writeJSONs(sourcedir: str, jsonArr):
             jsON['species'] = spec
         else:
             jsON['species'] = None
-        
-        jsonOut = sourcedir + srcType + "/" + country + "/" + subdiv + "/" + fname
+        dirPath = sourcedir + srcType + "/" + country + "/" + subdiv
+        os.makedirs(dirPath, exist_ok=True)
+        jsonOut = dirPath + "/" + fname
         with open(jsonOut, 'w') as jsonFile:
             jsonFile.write(json.dumps(jsON, indent=4))
         print("json saved to: " + path.abspath(jsonOut))
