@@ -1,4 +1,0 @@
-[submodule "land-sources"]
-	path = land-sources
-	url = git@github.com:Solidsilver/land-sources.git
-	branch = master

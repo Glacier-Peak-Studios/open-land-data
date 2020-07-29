@@ -9,6 +9,7 @@ import csv
 import pandas as pd
 import glob
 
+
 def csvToJSONs(sourcedir: str, csvPath: str):
     # jsonOut = csvPath.replace(Path(csvPath).suffix, ".json")
     csv_file = pd.DataFrame(pd.read_csv(
@@ -17,6 +18,7 @@ def csvToJSONs(sourcedir: str, csvPath: str):
                              double_precision=10, force_ascii=True, date_unit="ms", default_handler=None)
     jsDat = json.loads(outJS)
     writeJSONs(sourcedir, jsDat)
+
 
 def writeJSONs(sourcedir: str, jsonArr):
     for jsON in jsonArr:
@@ -32,7 +34,8 @@ def writeJSONs(sourcedir: str, jsonArr):
             jsON['properties'] = None
         specStr = jsON["species"]
         if specStr is not None:
-            specStr = specStr.replace("\', \'", "\", \"").replace("[\'", "[\"").replace("\']", "\"]").replace("\', \"", "\", \"").replace("\", \'", "\", \"")
+            specStr = specStr.replace("\', \'", "\", \"").replace("[\'", "[\"").replace(
+                "\']", "\"]").replace("\', \"", "\", \"").replace("\", \'", "\", \"")
             spec = json.loads(specStr)
             jsON['species'] = spec
         else:
@@ -53,6 +56,7 @@ def jsonToCSV(jsonPath):
     df.to_csv(csvOut, index=False)
     print("csv saved to: " + path.abspath(csvOut))
 
+
 def compileJSONs(sourcedir: str):
     jsonList = []
     for filename in glob.iglob(source_dir + '**/*.json', recursive=True):
@@ -67,31 +71,33 @@ def compileJSONs(sourcedir: str):
             data["type"] = path.basename(datType)
             jsonList.append(data)
     with open("combined-sources.json", 'w') as jsonFile:
-            jsonFile.write(json.dumps(jsonList, indent=4))
+        jsonFile.write(json.dumps(jsonList, indent=4))
         # print("json saved to: " + path.abspath(jsonOut))
 
 
 if len(sys.argv) < 2 or len(sys.argv) > 3:
     print("usage:")
-    print("\tsourcemgr.py [mode] <sourcedir>")
-    print("\nWhere <sourcdir> is the root folder of the .json sources.")
-    print("If <sourcdier> is ommited, it will default to './land-sources'")
+    print("\tsourcemgr.py [mode] <source>")
+    print("\nWhere <source> is the root folder of the .json sources or the .csv file.")
+    print("If <source> is ommited, it will default to './land-sources' for -c and './combined-sources.csv' for -j")
     print("\nMODES")
     print("\t-j\tConvert from csv to json")
     print("\t-c\tConvert from json to csv")
     print("\nNote: this script will automaticaly overwrite all files")
 else:
     mode = sys.argv[1]
-    if len(sys.argv) == 2:
-        source_dir = "./land-sources"
-    else:
-        source_dir = sys.argv[2]
+    source_dir = "./land-sources"
     source_dir = os.path.abspath(source_dir) + "/"
     if (mode == "-c"):
+        if len(sys.argv) > 2:
+            source_dir = sys.argv[2]
         print('Compiling sources from dir: ' + source_dir)
         compileJSONs(source_dir)
         jsonToCSV("combined-sources.json")
         os.remove("combined-sources.json")
     elif (mode == "-j"):
-        csvToJSONs(source_dir, "combined-sources.csv")
-
+        sourceFile = "combined-sources.csv"
+        if len(sys.argv) > 2:
+            sourceFile = sys.argv[2]
+        print('Parsing sources from: ' + sourceFile)
+        csvToJSONs(source_dir, sourceFile)
