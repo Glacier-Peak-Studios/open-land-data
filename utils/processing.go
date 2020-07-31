@@ -4,16 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 )
 
 // ProcessSource formats source data specified by a .json
 func ProcessSource(dir string, file string) error {
-	// if file == "hma-walk-in-2018.json" {
-	// 	fmt.Println("Time to debug!")
-	// }
+	if file == "elk-2017.json" {
+		fmt.Println("Time to debug!")
+	}
 	pathedFile := dir + "/" + file
 	sourceJSON := fileToStr(pathedFile)
 	sourceURL := getPropFromJSON("url", sourceJSON)
@@ -39,6 +38,9 @@ func ProcessSource(dir string, file string) error {
 		}
 	}
 	fname := getPropFromJSON("filenameInZip", sourceJSON)
+	if fname != "" && !fileExists(dlPath+"/"+fname) {
+		return errors.New("filenameInZip not found in archive: " + fname)
+	}
 	switch filetype := getPropFromJSON("filetype", sourceJSON); filetype {
 	case "geojson":
 		return processGeoJSON(dlPath, getFnameOnly(dlFile))
@@ -54,35 +56,58 @@ func ProcessSource(dir string, file string) error {
 }
 
 func processGeoJSON(path, filename string) error {
+	// if filename == "" {
+	// 	shapefiles, err := WalkMatch(path, "*.geojson")
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	if len(shapefiles) > 1 {
+	// 		fmt.Println("geojsons-in-dir: ", shapefiles)
+	// 		return errors.New("Multiple geojsons found, none specified in source")
+	// 	}
+	// 	if len(shapefiles) == 0 {
+	// 		return errors.New("No geojsons in folder: " + path)
+	// 	}
+	// 	filename = filepath.Base(shapefiles[0])
+	// }
 	fileWithPath := path + "/" + getFnameOnly(filename)
 	geojson := fileWithPath + ".geojson"
+	if !fileExists(geojson) {
+		return errors.New("Cannot process geojson! file doesn't exist: " + geojson)
+	}
 	geojsonLabels := fileWithPath + "-labels.geojson"
 	mbtiles := fileWithPath + ".mbtiles"
 	mbtilesLabels := fileWithPath + "-labels.mbtiles"
-	combined := fileWithPath + "-combined.mbtiles"
+	// combined := fileWithPath + "-combined.mbtiles"
 	fmt.Println("Processing geoJson: " + geojson)
 	var err error
 
-	if !fileExists(combined) {
-		err = generateLabels(geojsonLabels, geojson)
-		err = generateMBTiles(mbtiles, geojson)
-		err = generateMBTiles(mbtilesLabels, geojsonLabels)
-		err = combineMBTiles(combined, mbtiles, mbtilesLabels)
-	} else {
-		fmt.Println("Generated file exists, skipping: ", combined)
-	}
+	err = generateLabels(geojsonLabels, geojson)
 	if err != nil {
 		return err
 	}
-	if fileExists(geojsonLabels) {
-		err = os.Remove(geojsonLabels)
+	err = generateMBTiles(mbtiles, geojson)
+	if err != nil {
+		return err
 	}
-	if fileExists(mbtiles) {
-		err = os.Remove(mbtiles)
+	err = generateMBTiles(mbtilesLabels, geojsonLabels)
+	if err != nil {
+		return err
 	}
-	if fileExists(mbtilesLabels) {
-		err = os.Remove(mbtilesLabels)
-	}
+	// err = combineMBTiles(combined, mbtiles, mbtilesLabels)
+	// if err != nil {
+	// 	return err
+	// }
+	// fmt.Println("Generated file exists, skipping: ", combined)
+	// if fileExists(geojsonLabels) {
+	// 	err = os.Remove(geojsonLabels)
+	// }
+	// if fileExists(mbtiles) {
+	// 	err = os.Remove(mbtiles)
+	// }
+	// if fileExists(mbtilesLabels) {
+	// 	err = os.Remove(mbtilesLabels)
+	// }
 	return err
 }
 
@@ -110,6 +135,9 @@ func processShp(path, filename, fileOutName string) error {
 	var err error
 	fmt.Println("Processing shapefile: " + shapefile)
 	if !fileExists(geojson) {
+		if !fileExists(shapefile) {
+			return errors.New("Cannot convert shp to geojson - shp doesn't exist: " + shapefile)
+		}
 		_, err := runCommand(false, "ogr2ogr", "-f", "GeoJSON", "-t_srs", "crs:84", geojson, shapefile)
 		if err != nil {
 			return err
@@ -144,6 +172,9 @@ func processKml(path, filename, fileOutName string) error {
 	var err error
 	fmt.Println("Processing kmlfile: " + kmlfile)
 	if !fileExists(geojson) {
+		if !fileExists(kmlfile) {
+			return errors.New("Cannot convert kml to geojson - kml doesn't exist: " + kmlfile)
+		}
 		_, err := runCommand(false, "ogr2ogr", "-f", "GeoJSON", "-t_srs", "crs:84", geojson, kmlfile)
 		if err != nil {
 			return err
@@ -181,20 +212,20 @@ func processKmz(path, filename, fileOutName string) error {
 }
 
 func generateLabels(newfile, geojson string) error {
-	if !fileExists(geojson) {
-		return errors.New("Cannot create label! geojson doesn't exist: " + geojson)
-	}
 	if !fileExists(newfile) {
-		return runAndWriteCommand(newfile, "geojson-polygon-labels", "--label=polylabel", "--include-minzoom=6-11", geojson)
+		if !fileExists(geojson) {
+			return errors.New("Cannot create label! geojson doesn't exist: " + geojson)
+		}
+		return runAndWriteCommand(newfile, "geojson-polygon-labels", "--label=polylabel", "--include-minzoom=1-11", geojson)
 	}
 	return nil
 }
 
 func generateMBTiles(newfile, geojson string) error {
-	if !fileExists(geojson) {
-		return errors.New("Cannot create mbtile! geojson doesn't exist: " + geojson)
-	}
-	if !fileExists(newfile + ".mbtiles") {
+	if !fileExists(newfile) {
+		if !fileExists(geojson) {
+			return errors.New("Cannot create mbtile! geojson doesn't exist: " + geojson)
+		}
 		_, err := runCommand(false, "tippecanoe", "-f", "-z11", "-o", newfile, geojson)
 		return err
 	}
@@ -202,13 +233,13 @@ func generateMBTiles(newfile, geojson string) error {
 }
 
 func combineMBTiles(newfile, mbtiles, mbtilesLabels string) error {
-	if !fileExists(mbtiles) {
-		return errors.New("Cannot join mbtiles! base mbtile doesn't exist: " + mbtiles)
-	}
-	if !fileExists(mbtilesLabels) {
-		return errors.New("Cannot join mbtiles! labels mbtile doesn't exist: " + mbtilesLabels)
-	}
-	if !fileExists(newfile + ".mbtiles") {
+	if !fileExists(newfile) {
+		if !fileExists(mbtiles) {
+			return errors.New("Cannot join mbtiles! base mbtile doesn't exist: " + mbtiles)
+		}
+		if !fileExists(mbtilesLabels) {
+			return errors.New("Cannot join mbtiles! labels mbtile doesn't exist: " + mbtilesLabels)
+		}
 		_, err := runCommand(false, "tile-join", "-f", "-o", newfile, mbtiles, mbtilesLabels)
 		return err
 	}
