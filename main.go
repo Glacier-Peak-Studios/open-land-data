@@ -19,7 +19,7 @@ func main() {
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
 		" 0 - Only prints error messages\n"+
 		" 1 - Adds run specs and error details\n"+
-		" 2 - Adds general progress info"+
+		" 2 - Adds general progress info\n"+
 		" 3 - Adds debug info and details more detail\n")
 	startNewOpt := flag.Bool("f", false, "Force generation of all sources, overwriting those existing")
 	flag.Parse()

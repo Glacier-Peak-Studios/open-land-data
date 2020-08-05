@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -58,20 +59,6 @@ func ProcessSource(dir string, file string) error {
 }
 
 func processGeoJSON(path, filename string, fnameOut ...string) error {
-	// if filename == "" {
-	// 	shapefiles, err := WalkMatch(path, "*.geojson")
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	if len(shapefiles) > 1 {
-	// 		fmt.Println("geojsons-in-dir: ", shapefiles)
-	// 		return errors.New("Multiple geojsons found, none specified in source")
-	// 	}
-	// 	if len(shapefiles) == 0 {
-	// 		return errors.New("No geojsons in folder: " + path)
-	// 	}
-	// 	filename = filepath.Base(shapefiles[0])
-	// }
 	fileWithPath := path + "/" + getFnameOnly(filename)
 	geojson := fileWithPath + ".geojson"
 	if !fileExists(geojson) {
@@ -86,7 +73,6 @@ func processGeoJSON(path, filename string, fnameOut ...string) error {
 	geojsonLabels := fileWithPath + "-labels.geojson"
 	mbtiles := fileWithPath + ".mbtiles"
 	mbtilesLabels := fileWithPath + "-labels.mbtiles"
-	// combined := fileWithPath + "-combined.mbtiles"
 	log.Debug("Processing geoJson: " + geojson)
 	var err error
 
@@ -102,21 +88,25 @@ func processGeoJSON(path, filename string, fnameOut ...string) error {
 	if err != nil {
 		return err
 	}
-	// err = combineMBTiles(combined, mbtiles, mbtilesLabels)
-	// if err != nil {
-	// 	return err
-	// }
-	// fmt.Println("Generated file exists, skipping: ", combined)
-	// if fileExists(geojsonLabels) {
-	// 	err = os.Remove(geojsonLabels)
-	// }
-	// if fileExists(mbtiles) {
-	// 	err = os.Remove(mbtiles)
-	// }
-	// if fileExists(mbtilesLabels) {
-	// 	err = os.Remove(mbtilesLabels)
-	// }
-	return err
+	const combine = false
+	if combine {
+		combined := fileWithPath + "-combined.mbtiles"
+		err = combineMBTiles(combined, mbtiles, mbtilesLabels)
+		if err != nil {
+			return err
+		}
+		fmt.Println("Generated file exists, skipping: ", combined)
+		if fileExists(geojsonLabels) {
+			err = os.Remove(geojsonLabels)
+		}
+		if fileExists(mbtiles) {
+			err = os.Remove(mbtiles)
+		}
+		if fileExists(mbtilesLabels) {
+			err = os.Remove(mbtilesLabels)
+		}
+		return err
+	}
 }
 
 func processShp(path, filename, fileOutName string) error {

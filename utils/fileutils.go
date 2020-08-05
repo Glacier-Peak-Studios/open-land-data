@@ -78,7 +78,6 @@ func WalkMatch(root string, pattern string) ([]string, error) {
 func CleanJob(job string) error {
 	outdir := strings.Replace(job, "land-sources", "generated", 1)
 	log.Info("Cleaning job: ", outdir)
-	// Remove zipfiles when done with job:
 	zipfiles, err := WalkMatch(outdir, "*.zip")
 	if err != nil {
 		log.Error(err)
@@ -90,7 +89,6 @@ func CleanJob(job string) error {
 		log.Debug("Removing folder: ", folder)
 		err = os.RemoveAll(folder)
 	}
-	// Remove kmzfiles when done with job:
 	kmzfiles, err := WalkMatch(outdir, "*.kmz")
 	if err != nil {
 		log.Print(err)
