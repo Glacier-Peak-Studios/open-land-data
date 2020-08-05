@@ -2,12 +2,12 @@ package utils
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 func fileExists(filename string) bool {
@@ -52,6 +52,7 @@ func getPropFromJSON(prop string, strJSON string) string {
 
 // WalkMatch gets all files in root with specified pattern
 func WalkMatch(root string, pattern string) ([]string, error) {
+	log.Debug("Searching dir ", root, " for pattern ", pattern)
 	var matches []string
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -76,19 +77,18 @@ func WalkMatch(root string, pattern string) ([]string, error) {
 // CleanJob cleans up folders and .zip files in the target job's directory
 func CleanJob(job string) error {
 	outdir := strings.Replace(job, "land-sources", "generated", 1)
-	fmt.Println("Cleaning job: ", outdir)
+	log.Info("Cleaning job: ", outdir)
 	// Remove zipfiles when done with job:
 	zipfiles, err := WalkMatch(outdir, "*.zip")
 	if err != nil {
-		log.Print(err)
+		log.Error(err)
 	}
 	for i := 0; i < len(zipfiles); i++ {
-		fmt.Println("Removing zipfile: " + zipfiles[i])
+		log.Debug("Removing zipfile: " + zipfiles[i])
 		err = os.Remove(zipfiles[i])
 		folder := outdir + "/" + getFnameOnly(zipfiles[i])
-		fmt.Println("Removing folder: ", folder)
+		log.Debug("Removing folder: ", folder)
 		err = os.RemoveAll(folder)
-		// err = os.Remove(zipfiles[i])
 	}
 	// Remove kmzfiles when done with job:
 	kmzfiles, err := WalkMatch(outdir, "*.kmz")
@@ -96,7 +96,7 @@ func CleanJob(job string) error {
 		log.Print(err)
 	}
 	for i := 0; i < len(kmzfiles); i++ {
-		fmt.Println("Removing kmzfile: " + kmzfiles[i])
+		log.Debug("Removing kmzfile: " + kmzfiles[i])
 		err = os.Remove(kmzfiles[i])
 	}
 	return err

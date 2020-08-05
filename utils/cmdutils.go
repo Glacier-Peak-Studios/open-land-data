@@ -1,10 +1,11 @@
 package utils
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 func runAndWriteCommand(outName, cmdName string, args ...string) error {
@@ -18,7 +19,7 @@ func runAndWriteCommand(outName, cmdName string, args ...string) error {
 
 	err = cmd.Start()
 	if err != nil {
-		fmt.Println("Error running cmd: " + cmdName + " " + strings.Join(args, " ") + " > " + outName)
+		log.Warn("Error running cmd: " + cmdName + " " + strings.Join(args, " ") + " > " + outName)
 		return err
 	}
 	cmd.Wait()
@@ -28,10 +29,10 @@ func runAndWriteCommand(outName, cmdName string, args ...string) error {
 func runCommand(silent bool, cmd string, args ...string) (string, error) {
 	out, err := exec.Command(cmd, args...).Output()
 	if !silent {
-		fmt.Printf("%s\n", out)
+		log.Debug("%s\n", out)
 	}
 	if err != nil {
-		fmt.Println("Command unsuccessful: " + cmd + " " + strings.Join(args, " "))
+		log.Warn("Command unsuccessful: " + cmd + " " + strings.Join(args, " "))
 		return "", err
 	}
 	return string(out), nil

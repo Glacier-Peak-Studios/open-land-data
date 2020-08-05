@@ -1,38 +1,77 @@
 package main
 
 import (
-	"fmt"
+	"flag"
 	"io/ioutil"
-	"log"
+	"os"
 	"path/filepath"
+
+	log "github.com/Sirupsen/logrus"
 
 	"./utils"
 )
 
 func main() {
-	sources, _ := utils.WalkMatch("./land-sources", "*.json")
+
+	workersOpt := flag.Int("w", 4, "The number of concurrent jobs being processed")
+	sourceDirOpt := flag.String("src", "./land-sources", "The root directory of the source files")
+	cleanupOpt := flag.Bool("c", true, "Clean up the zip files and folders in the generated directories")
+	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
+		" 0 - Only prints error messages\n"+
+		" 1 - Adds run specs and error details\n"+
+		" 2 - Adds general progress info"+
+		" 3 - Adds debug info and details more detail\n")
+	startNewOpt := flag.Bool("f", false, "Force generation of all sources, overwriting those existing")
+	flag.Parse()
+
+	switch *verboseOpt {
+	case 0:
+		log.SetLevel(log.ErrorLevel)
+		break
+	case 1:
+		log.SetLevel(log.WarnLevel)
+		break
+	case 2:
+		log.SetLevel(log.InfoLevel)
+		break
+	case 3:
+		log.SetLevel(log.DebugLevel)
+		log.SetReportCaller(true)
+		break
+	default:
+		break
+	}
+
+	if *startNewOpt {
+		err := os.RemoveAll("./generated")
+		if err != nil {
+			log.Warn(err)
+		}
+	}
+
+	log.Warn("Searching sources dir: ", *sourceDirOpt)
+	sources, _ := utils.WalkMatch(*sourceDirOpt, "*.json")
 	jobCount := len(sources)
-	fmt.Println("Sources:", jobCount)
 	jobs := make(chan string, jobCount)
 	results := make(chan string, jobCount)
-	workerCount := 8
-	// workerCount := 1
-	for i := 0; i < workerCount; i++ {
-		go worker(jobs, results)
+
+	log.Warn("Sources found: ", jobCount)
+	log.Warn("Running with ", *workersOpt, " workers")
+	for i := 0; i < *workersOpt; i++ {
+		go worker(jobs, results, *cleanupOpt)
 	}
-	queueSources("./land-sources", jobs)
+	queueSources(*sourceDirOpt, jobs)
 	close(jobs)
 
-	// for result := range results {
-	// 	fmt.Println(result)
-	// }
-	for i := 0; i < jobCount*3; i++ {
-		fmt.Println(<-results)
+	for i := 0; i < jobCount*2; i++ {
+		var rst = <-results
+		log.Debug(rst)
 	}
+	log.Warn("Done with all jobs")
 
 }
 
-func worker(jobs <-chan string, results chan<- string) {
+func worker(jobs <-chan string, results chan<- string, cleanUp bool) {
 	for job := range jobs {
 		files, err := ioutil.ReadDir(job)
 		if err != nil {
@@ -42,23 +81,25 @@ func worker(jobs <-chan string, results chan<- string) {
 			if !f.IsDir() && filepath.Ext(f.Name()) == ".json" {
 				err := utils.ProcessSource(job, f.Name())
 				fileFull := job + "/" + f.Name()
-				logMsg(results, f.Name(), "Processing Source")
+				log.Info(f.Name(), ": Processing Source")
 				if err != nil {
-					logMsg(results, fileFull, "Source failed!")
-					logMsg(results, fileFull, err.Error())
+					logMsg(results, fileFull, " Source failed!")
+					log.Error(fileFull, ": ", err.Error())
 				} else {
-					logMsg(results, f.Name(), "Finished processing source")
-					logMsg(results, f.Name(), "Job done")
+					log.Info(f.Name(), ": Finished processing source")
+					logMsg(results, f.Name(), " Job done")
 				}
 			}
 
 		}
-		utils.CleanJob(job)
+		if cleanUp {
+			utils.CleanJob(job)
+		}
 	}
 }
 
 func logMsg(results chan<- string, source, msg string) {
-	toSend := source + ":: " + msg
+	toSend := source + ": " + msg
 	results <- toSend
 }
 

@@ -3,15 +3,15 @@ package utils
 import (
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/cavaliercoder/grab"
 	"github.com/jlaffaye/ftp"
@@ -24,12 +24,13 @@ func DownloadFile(path string, urlStr string) (string, error) {
 	// Ensure target path exists
 	err := os.MkdirAll(path, 0755)
 	if err != nil {
-		log.Print(err)
+		return "", err
 	}
 	u, err := url.Parse(urlStr)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
+	log.Debug("Download type is ", u.Scheme)
 	switch u.Scheme {
 	case "http":
 		return downloadHTTP(path, urlStr)
@@ -59,7 +60,7 @@ func downloadHTTP(path string, url string) (string, error) {
 	if err := resp.Err(); err != nil {
 		return "", err
 	}
-	fmt.Println("Download saved to", resp.Filename)
+	log.Debug("Download saved to ", resp.Filename)
 	return resp.Filename, nil
 }
 
@@ -74,13 +75,13 @@ func downloadFTP(path string, u *url.URL) (string, error) {
 	}
 	res, err := c.Retr(u.Path)
 	if err != nil {
-		fmt.Println("Could not retrieve " + u.Path)
+		log.Warn("Could not retrieve " + u.Path)
 		return "", err
 	}
 	defer res.Close()
 	outFile, err := os.Create(path + "/" + filepath.Base(u.Path))
 	if err != nil {
-		fmt.Println("Could not create dl file " + path + "/" + filepath.Base(u.Path))
+		log.Warn("Could not create dl file " + path + "/" + filepath.Base(u.Path))
 		return "", err
 	}
 	defer outFile.Close()
@@ -96,15 +97,17 @@ func downloadBox(path, boxpath string) (string, error) {
 	if !exists {
 		return "", errors.New("Failed to fetch box source: BOXPATH env not set")
 	}
+	log.Debug("BOXPATH=", boxdir)
 	pathIn := strings.Replace(boxpath, "box://", "file://"+boxdir+"/", 1)
 	return downloadLocalFile(path, pathIn)
 }
 
 func downloadLocalFile(pathOut, pathIn string) (string, error) {
+	log.Debug("local file is: ", pathIn)
 	pathIn = strings.Replace(pathIn, "file://", "", 1)
 	_, err := runCommand(false, "cp", "-r", pathIn, pathOut)
 	if err != nil {
-		fmt.Println("Could not download local file")
+		log.Warn("Could not copy local file: ", pathIn, "to", pathOut)
 		return "", err
 	}
 	return pathOut + "/" + filepath.Base(pathIn), nil
