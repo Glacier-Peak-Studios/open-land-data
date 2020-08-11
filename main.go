@@ -13,9 +13,9 @@ import (
 
 func main() {
 
-	workersOpt := flag.Int("w", 4, "The number of concurrent jobs being processed")
+	workersOpt := flag.Int("t", 4, "The number of concurrent jobs being processed")
 	sourceDirOpt := flag.String("src", "./land-sources", "The root directory of the source files")
-	cleanupOpt := flag.Bool("c", true, "Clean up the zip files and folders in the generated directories")
+	cleanupOpt := flag.Bool("nc", false, "Don't clean up the zip files and folders in the generated directories")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
 		" 0 - Only prints error messages\n"+
 		" 1 - Adds run specs and error details\n"+
@@ -58,7 +58,7 @@ func main() {
 	log.Warn("Sources found: ", jobCount)
 	log.Warn("Running with ", *workersOpt, " workers")
 	for i := 0; i < *workersOpt; i++ {
-		go worker(jobs, results, *cleanupOpt)
+		go worker(jobs, results, !(*cleanupOpt))
 	}
 	queueSources(*sourceDirOpt, jobs)
 	close(jobs)

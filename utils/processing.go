@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -95,7 +94,6 @@ func processGeoJSON(path, filename string, fnameOut ...string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println("Generated file exists, skipping: ", combined)
 		if fileExists(geojsonLabels) {
 			err = os.Remove(geojsonLabels)
 		}
@@ -105,8 +103,8 @@ func processGeoJSON(path, filename string, fnameOut ...string) error {
 		if fileExists(mbtilesLabels) {
 			err = os.Remove(mbtilesLabels)
 		}
-		return err
 	}
+	return err
 }
 
 func processShp(path, filename, fileOutName string) error {

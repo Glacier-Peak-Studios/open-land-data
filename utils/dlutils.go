@@ -107,7 +107,7 @@ func downloadLocalFile(pathOut, pathIn string) (string, error) {
 	pathIn = strings.Replace(pathIn, "file://", "", 1)
 	_, err := runCommand(false, "cp", "-r", pathIn, pathOut)
 	if err != nil {
-		log.Warn("Could not copy local file: ", pathIn, "to", pathOut)
+		log.Warn("Could not copy local file: ", pathIn, " to ", pathOut)
 		return "", err
 	}
 	return pathOut + "/" + filepath.Base(pathIn), nil
