@@ -26,8 +26,27 @@ func runAndWriteCommand(outName, cmdName string, args ...string) error {
 	return nil
 }
 
-func runCommand(silent bool, cmd string, args ...string) (string, error) {
+func RunCommand(silent bool, cmd string, args ...string) (string, error) {
 	out, err := exec.Command(cmd, args...).Output()
+	if !silent {
+		log.Debug("%s\n", out)
+	}
+	if err != nil {
+		log.Warn("Command unsuccessful: " + cmd + " " + strings.Join(args, " "))
+		return "", err
+	}
+	return string(out), nil
+}
+
+func RunCommand2(silent bool, captureOut bool, cmd string, args ...string) (string, error) {
+	var out []byte
+	var err error
+	if captureOut {
+		out, err = exec.Command(cmd, args...).Output()
+	} else {
+		err = exec.Command(cmd, args...).Run()
+	}
+
 	if !silent {
 		log.Debug("%s\n", out)
 	}

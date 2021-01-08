@@ -105,7 +105,7 @@ func downloadBox(path, boxpath string) (string, error) {
 func downloadLocalFile(pathOut, pathIn string) (string, error) {
 	log.Debug("local file is: ", pathIn)
 	pathIn = strings.Replace(pathIn, "file://", "", 1)
-	_, err := runCommand(false, "cp", "-r", pathIn, pathOut)
+	_, err := RunCommand(false, "cp", "-r", pathIn, pathOut)
 	if err != nil {
 		log.Warn("Could not copy local file: ", pathIn, " to ", pathOut)
 		return "", err

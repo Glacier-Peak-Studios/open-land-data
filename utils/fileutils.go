@@ -26,7 +26,17 @@ func dirExists(filename string) bool {
 	return info.IsDir()
 }
 
+func DirEx(filename string) bool {
+	return dirExists(filename)
+}
+
 func getFnameOnly(file string) string {
+	var filename = filepath.Base(file)
+	var extension = filepath.Ext(filename)
+	return filename[0 : len(filename)-len(extension)]
+}
+
+func StripExt(file string) string {
 	var filename = filepath.Base(file)
 	var extension = filepath.Ext(filename)
 	return filename[0 : len(filename)-len(extension)]
