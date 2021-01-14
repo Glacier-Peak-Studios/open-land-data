@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 func runAndWriteCommand(outName, cmdName string, args ...string) error {
@@ -19,7 +19,7 @@ func runAndWriteCommand(outName, cmdName string, args ...string) error {
 
 	err = cmd.Start()
 	if err != nil {
-		log.Warn("Error running cmd: " + cmdName + " " + strings.Join(args, " ") + " > " + outName)
+		log.Warn().Msg("Error running cmd: " + cmdName + " " + strings.Join(args, " ") + " > " + outName)
 		return err
 	}
 	cmd.Wait()
@@ -29,10 +29,10 @@ func runAndWriteCommand(outName, cmdName string, args ...string) error {
 func RunCommand(silent bool, cmd string, args ...string) (string, error) {
 	out, err := exec.Command(cmd, args...).Output()
 	if !silent {
-		log.Debug("%s\n", out)
+		log.Debug().Msgf("%s\n", out)
 	}
 	if err != nil {
-		log.Warn("Command unsuccessful: " + cmd + " " + strings.Join(args, " "))
+		log.Warn().Msg("Command unsuccessful: " + cmd + " " + strings.Join(args, " "))
 		return "", err
 	}
 	return string(out), nil
@@ -48,10 +48,10 @@ func RunCommand2(silent bool, captureOut bool, cmd string, args ...string) (stri
 	}
 
 	if !silent {
-		log.Debug("%s\n", out)
+		log.Debug().Msgf("%s\n", out)
 	}
 	if err != nil {
-		log.Warn("Command unsuccessful: " + cmd + " " + strings.Join(args, " "))
+		log.Warn().Msg("Command unsuccessful: " + cmd + " " + strings.Join(args, " "))
 		return "", err
 	}
 	return string(out), nil

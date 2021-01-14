@@ -2,12 +2,13 @@ package utils
 
 import (
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 func fileExists(filename string) bool {
@@ -45,9 +46,13 @@ func StripExt(file string) string {
 func fileToStr(file string) string {
 	content, err := ioutil.ReadFile(file)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("")
 	}
 	return string(content)
+}
+
+func FtoStr(file string) string {
+	return fileToStr(file)
 }
 
 func getPropFromJSON(prop string, strJSON string) string {
@@ -62,7 +67,7 @@ func getPropFromJSON(prop string, strJSON string) string {
 
 // WalkMatch gets all files in root with specified pattern
 func WalkMatch(root string, pattern string) ([]string, error) {
-	log.Debug("Searching dir ", root, " for pattern ", pattern)
+	log.Debug().Msgf("Searching dir %v for pattern %v", root, pattern)
 	var matches []string
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -87,16 +92,16 @@ func WalkMatch(root string, pattern string) ([]string, error) {
 // CleanJob cleans up folders and .zip files in the target job's directory
 func CleanJob(job string) error {
 	outdir := strings.Replace(job, "land-sources", "generated", 1)
-	log.Info("Cleaning job: ", outdir)
+	log.Info().Msgf("Cleaning job: %v", outdir)
 	zipfiles, err := WalkMatch(outdir, "*.zip")
 	if err != nil {
-		log.Error(err)
+		log.Error().Err(err).Msg("")
 	}
 	for i := 0; i < len(zipfiles); i++ {
-		log.Debug("Removing zipfile: " + zipfiles[i])
+		log.Debug().Msg("Removing zipfile: " + zipfiles[i])
 		err = os.Remove(zipfiles[i])
 		folder := outdir + "/" + getFnameOnly(zipfiles[i])
-		log.Debug("Removing folder: ", folder)
+		log.Debug().Msgf("Removing folder: %v", folder)
 		err = os.RemoveAll(folder)
 	}
 	kmzfiles, err := WalkMatch(outdir, "*.kmz")
@@ -104,8 +109,93 @@ func CleanJob(job string) error {
 		log.Print(err)
 	}
 	for i := 0; i < len(kmzfiles); i++ {
-		log.Debug("Removing kmzfile: " + kmzfiles[i])
+		log.Debug().Msg("Removing kmzfile: " + kmzfiles[i])
 		err = os.Remove(kmzfiles[i])
 	}
 	return err
+}
+
+func BBoxFromTileset(path string) BBox {
+	xrange, err := ioutil.ReadDir(path)
+	if err != nil {
+		log.Error().Msg("Couldn't read source dir")
+	}
+	x0 := xrange[0].Name()
+	x1 := xrange[len(xrange)-1].Name()
+
+	x0Path := filepath.Join(path, x0)
+	x1Path := filepath.Join(path, x1)
+	x0ListY, err := ioutil.ReadDir(x0Path)
+	x1ListY, err := ioutil.ReadDir(x1Path)
+	if err != nil {
+		log.Error().Msg("Couldn't read source dir")
+	}
+	y0 := strings.Replace(x0ListY[0].Name(), ".png", "", 1)
+	y1 := strings.Replace(x1ListY[len(x1ListY)-1].Name(), ".png", "", 1)
+
+	tsOrigin, _ := NewPoint(x0, y0)
+	tsExtent, _ := NewPoint(x1, y1)
+
+	return BBx(tsOrigin, tsExtent)
+}
+
+func CleanBBoxEdge(b BBox, side string, basepath string, zoom int) {
+	// var err error = nil
+	sideNum := SideToNum(side)
+	for ix := b.Origin().X; ix <= b.Extent().X; ix++ {
+		for iy := b.Origin().Y; iy <= b.Extent().Y; iy++ {
+			tile := tile{x: ix, y: iy, z: zoom}
+			imgFile := filepath.Join(basepath, tile.getPath()+".png")
+			CleanTileEdge(imgFile, sideNum)
+			// err = os.Remove(imgFile)
+		}
+	}
+}
+
+// func GetTrimBBox(file string, curBBox BBox) BBox {
+
+// }
+
+func GetGeoPDFLayers(file string) []string {
+	out, err := RunCommand(true, "gdalinfo", "-mdd", "LAYERS", file)
+	log.Err(err).Msg("Quering gdalinfo for layers")
+	lines := strings.Split(out, "\n")
+	var layers []string
+	for _, line := range lines {
+		if strings.Contains(line, "LAYER_") {
+			layer := strings.Split(line, "=")[1]
+			layers = append(layers, layer)
+		}
+	}
+	// println(lines)
+	return layers
+}
+
+func removeTilesInBBox(b BBox, basepath string, z int) error {
+	var err error = nil
+	for ix := b.Origin().X; ix <= b.Extent().X; ix++ {
+		for iy := b.Origin().Y; iy <= b.Extent().Y; iy++ {
+			tile := tile{x: ix, y: iy, z: z}
+			imgFile := filepath.Join(basepath, tile.getPath()+".png")
+			err = os.Remove(imgFile)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to remove file")
+			}
+		}
+	}
+	return err
+}
+
+func IsEmpty(name string) (bool, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	_, err = f.Readdirnames(1) // Or f.Readdir(1)
+	if err == io.EOF {
+		return true, nil
+	}
+	return false, err // Either not empty or error, suits both cases
 }

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 
 	"github.com/cavaliercoder/grab"
 	"github.com/jlaffaye/ftp"
@@ -30,7 +30,7 @@ func DownloadFile(path string, urlStr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	log.Debug("Download type is ", u.Scheme)
+	log.Debug().Msgf("Download type is %v", u.Scheme)
 	switch u.Scheme {
 	case "http":
 		return downloadHTTP(path, urlStr)
@@ -60,7 +60,7 @@ func downloadHTTP(path string, url string) (string, error) {
 	if err := resp.Err(); err != nil {
 		return "", err
 	}
-	log.Debug("Download saved to ", resp.Filename)
+	log.Debug().Msgf("Download saved to %v", resp.Filename)
 	return resp.Filename, nil
 }
 
@@ -75,13 +75,13 @@ func downloadFTP(path string, u *url.URL) (string, error) {
 	}
 	res, err := c.Retr(u.Path)
 	if err != nil {
-		log.Warn("Could not retrieve " + u.Path)
+		log.Warn().Msg("Could not retrieve " + u.Path)
 		return "", err
 	}
 	defer res.Close()
 	outFile, err := os.Create(path + "/" + filepath.Base(u.Path))
 	if err != nil {
-		log.Warn("Could not create dl file " + path + "/" + filepath.Base(u.Path))
+		log.Warn().Msg("Could not create dl file " + path + "/" + filepath.Base(u.Path))
 		return "", err
 	}
 	defer outFile.Close()
@@ -97,17 +97,17 @@ func downloadBox(path, boxpath string) (string, error) {
 	if !exists {
 		return "", errors.New("Failed to fetch box source: BOXPATH env not set")
 	}
-	log.Debug("BOXPATH=", boxdir)
+	log.Debug().Msgf("BOXPATH=%v", boxdir)
 	pathIn := strings.Replace(boxpath, "box://", "file://"+boxdir+"/", 1)
 	return downloadLocalFile(path, pathIn)
 }
 
 func downloadLocalFile(pathOut, pathIn string) (string, error) {
-	log.Debug("local file is: ", pathIn)
+	log.Debug().Msgf("local file is: %v", pathIn)
 	pathIn = strings.Replace(pathIn, "file://", "", 1)
 	_, err := RunCommand(false, "cp", "-r", pathIn, pathOut)
 	if err != nil {
-		log.Warn("Could not copy local file: ", pathIn, " to ", pathOut)
+		log.Warn().Msgf("Could not copy local file: %v to %v", pathIn, pathOut)
 		return "", err
 	}
 	return pathOut + "/" + filepath.Base(pathIn), nil
