@@ -115,10 +115,11 @@ func CleanJob(job string) error {
 	return err
 }
 
-func BBoxFromTileset(path string) BBox {
+func BBoxFromTileset(path string) (BBox, error) {
 	xrange, err := ioutil.ReadDir(path)
 	if err != nil {
 		log.Error().Msg("Couldn't read source dir")
+		return ZeroBBox(), err
 	}
 	x0 := xrange[0].Name()
 	x1 := xrange[len(xrange)-1].Name()
@@ -129,6 +130,7 @@ func BBoxFromTileset(path string) BBox {
 	x1ListY, err := ioutil.ReadDir(x1Path)
 	if err != nil {
 		log.Error().Msg("Couldn't read source dir")
+		return ZeroBBox(), err
 	}
 	y0 := strings.Replace(x0ListY[0].Name(), ".png", "", 1)
 	y1 := strings.Replace(x1ListY[len(x1ListY)-1].Name(), ".png", "", 1)
@@ -136,7 +138,7 @@ func BBoxFromTileset(path string) BBox {
 	tsOrigin, _ := NewPoint(x0, y0)
 	tsExtent, _ := NewPoint(x1, y1)
 
-	return BBx(tsOrigin, tsExtent)
+	return BBx(tsOrigin, tsExtent), nil
 }
 
 func CleanBBoxEdge(b BBox, side string, basepath string, zoom int) {
@@ -144,7 +146,7 @@ func CleanBBoxEdge(b BBox, side string, basepath string, zoom int) {
 	sideNum := SideToNum(side)
 	for ix := b.Origin().X; ix <= b.Extent().X; ix++ {
 		for iy := b.Origin().Y; iy <= b.Extent().Y; iy++ {
-			tile := tile{x: ix, y: iy, z: zoom}
+			tile := Tile{x: ix, y: iy, z: zoom}
 			imgFile := filepath.Join(basepath, tile.getPath()+".png")
 			CleanTileEdge(imgFile, sideNum)
 			// err = os.Remove(imgFile)
@@ -175,7 +177,7 @@ func removeTilesInBBox(b BBox, basepath string, z int) error {
 	var err error = nil
 	for ix := b.Origin().X; ix <= b.Extent().X; ix++ {
 		for iy := b.Origin().Y; iy <= b.Extent().Y; iy++ {
-			tile := tile{x: ix, y: iy, z: z}
+			tile := Tile{x: ix, y: iy, z: z}
 			imgFile := filepath.Join(basepath, tile.getPath()+".png")
 			err = os.Remove(imgFile)
 			if err != nil {

@@ -21,6 +21,7 @@ func main() {
 	workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
 	src1 := flag.String("src1", "/Users/solidsilver/Code/USFS/TilemergeTest/GPEastFSTopo", "The root directory of the source files")
 	src2 := flag.String("src2", "/Users/solidsilver/Code/USFS/TilemergeTest/GPWestFSTopo", "The root directory of the source files")
+	massMerge := flag.Bool("m", false, "Merge all tilesets in a given directory (ignores -src2 flag)")
 	outDir := flag.String("o", "/Users/solidsilver/Code/USFS/TilemergeTest/GPTilemerge", "The root directory of the source files")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
 		" 0 - Only prints error messages\n"+
@@ -50,13 +51,50 @@ func main() {
 		break
 	}
 
-	TileMerge(*src1, *src2, *outDir, *workersOpt)
+	if *massMerge {
+		MassTileMerge(*src1, *outDir, *workersOpt)
+	} else {
+		TileMerge(*src1, *src2, *outDir, *workersOpt)
+	}
+
+}
+
+func MassTileMerge(setsDir string, out string, workers int) {
+	m := make(map[string][]string)
+	sources, _ := utils.WalkMatch(setsDir, "*.png")
+	var tileList []utils.Tile
+
+	for _, source := range sources {
+		tile, base := utils.PathToTile(source)
+		tSources := m[tile.GetPathXY()]
+		tSources = append(tSources, base)
+		m[tile.GetPathXY()] = tSources
+		tileList = utils.AppendSetT(tileList, tile)
+	}
+
+	jobCount := len(tileList)
+	jobs := make(chan utils.Tile, jobCount)
+	results := make(chan string, jobCount)
+
+	log.Warn().Msgf("Running with %v workers", workers)
+	for i := 0; i < workers; i++ {
+		go utils.TilesetMergeWorker2(jobs, results, m, out)
+	}
+	for _, tile := range tileList {
+		jobs <- tile
+	}
+	for i := 0; i < jobCount; i++ {
+		var rst = <-results
+		log.Debug().Msg(rst)
+	}
+	close(jobs)
+	log.Warn().Msg("Done with all jobs")
 
 }
 
 func TileMerge(src1 string, src2 string, out string, workers int) {
-	src1BBox := utils.BBoxFromTileset(src1 + "/18")
-	src2BBox := utils.BBoxFromTileset(src2 + "/18")
+	src1BBox, _ := utils.BBoxFromTileset(src1 + "/18")
+	src2BBox, _ := utils.BBoxFromTileset(src2 + "/18")
 
 	intersect, _ := utils.GetBBoxIntersect(src1BBox, src2BBox)
 	intersect.ExpandBy(1)

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"os"
+	"path/filepath"
 )
 
 func Min(x, y int) int {
@@ -38,6 +39,15 @@ func FilterFI(vs []os.FileInfo, f func(os.FileInfo) bool) []os.FileInfo {
 	return vsf
 }
 
+func Map(vs []string, f func(string) string) []string {
+	vsf := make([]string, 0)
+	for _, v := range vs {
+		vF := f(v)
+		vsf = append(vsf, vF)
+	}
+	return vsf
+}
+
 func MapFI(vs []os.FileInfo, f func(os.FileInfo) string) []string {
 	vsf := make([]string, 0)
 	for _, v := range vs {
@@ -45,6 +55,50 @@ func MapFI(vs []os.FileInfo, f func(os.FileInfo) string) []string {
 		vsf = append(vsf, vF)
 	}
 	return vsf
+}
+
+func SetMap(slc []string, f func(string) string) []string {
+	vsf := make([]string, 0)
+	for _, v := range slc {
+		vF := f(v)
+		if !stringInSlice(vF, vsf) {
+			vsf = append(vsf, vF)
+		}
+	}
+	return vsf
+}
+
+func AppendSetT(set []Tile, tile Tile) []Tile {
+	if !tileInSlice(tile, set) {
+		return append(set, tile)
+	}
+	return set
+}
+
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+func tileInSlice(a Tile, list []Tile) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+func OverviewRoot(path string) string {
+	tile, basepath := PathToTile(path)
+	up := tile.overviewTile()
+	root := MakeTile(up.x*2, up.y*2, up.z+1)
+	return filepath.Join(basepath, root.getPath())
+
 }
 
 // func Filter[T any](vs []T, f func(T) bool) []T {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
@@ -44,32 +43,33 @@ func main() {
 
 	daw := utils.GetGeoPDFLayers(*in)
 
-	lrs := utils.Filter(daw, LayerFilter)
+	lrs := utils.Filter(daw, utils.RemoveLayer)
 
+	println("Layers to Remove:")
 	for _, val := range lrs {
 		println(val)
 	}
 }
 
-func LayerFilter(layer string) bool {
-	if strings.HasPrefix(layer, "Quadrangle.Neatline") {
-		return false
-	}
-	if strings.HasPrefix(layer, "Quadrangle.2_5") {
-		return false
-	}
-	if strings.HasPrefix(layer, "Quadrangle_Ext") {
-		return false
-	}
-	if strings.HasPrefix(layer, "Adjacent") {
-		return false
-	}
-	if strings.HasPrefix(layer, "Other") {
-		return false
-	}
-	if strings.HasPrefix(layer, "Quadrangle.UTM") {
-		return false
-	}
+// func LayerFilter(layer string) bool {
+// 	if strings.HasPrefix(layer, "Quadrangle.Neatline") {
+// 		return false
+// 	}
+// 	if strings.HasPrefix(layer, "Quadrangle.2_5") {
+// 		return false
+// 	}
+// 	if strings.HasPrefix(layer, "Quadrangle_Ext") {
+// 		return false
+// 	}
+// 	if strings.HasPrefix(layer, "Adjacent") {
+// 		return false
+// 	}
+// 	if strings.HasPrefix(layer, "Other") {
+// 		return false
+// 	}
+// 	if strings.HasPrefix(layer, "Quadrangle.UTM") {
+// 		return false
+// 	}
 
-	return true
-}
+// 	return true
+// }

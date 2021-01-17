@@ -11,25 +11,24 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func PDF2TiffWorker(jobs <-chan string, results chan<- string, cmd string, constArgs ...string) {
+func PDF2TiffWorker(jobs <-chan string, results chan<- string, outDir string, cmd string, constArgs ...string) {
 	for job := range jobs {
 		// jobSplit := strings.Split(job, " ")
 		println("-> Job -", job)
 		pdfLayers := GetGeoPDFLayers(job)
 
-		pdfLayers = Filter(pdfLayers, LayerFilter)
-		keepLayers := "\"" + strings.Join(pdfLayers[:], ",") + "\""
-		args := append(constArgs, "--config", "GDAL_PDF_LAYERS", keepLayers)
+		pdfLayers = Filter(pdfLayers, RemoveLayer)
+		rmLayers := strings.Join(pdfLayers[:], ",")
+		args := append(constArgs, "--config", "GDAL_PDF_LAYERS_OFF", rmLayers)
 
-		fout := filepath.Join(filepath.Dir(job), StripExt(job)+".tif")
+		fout := filepath.Join(outDir, StripExt(job)+".tif")
 		args = append(args, job, fout)
 		// constArgs = append(constArgs, job, fout)
-
+		println("Going to run::")
+		argList := strings.Join(args, " ")
+		println(cmd, argList)
 		if !fileExists(fout) {
-			// println("Going to run::")
-			// argList := strings.Join(args, " ")
-			// println(cmd, argList)
-			out, err := RunCommand2(false, true, cmd, args...)
+			out, err := RunCommand2(true, false, cmd, args...)
 			log.Err(err).Msg(out)
 		} else {
 			log.Info().Msg("File exists, skipping")
@@ -63,11 +62,15 @@ func LayerFilter(layer string) bool {
 	return true
 }
 
+func RemoveLayer(layer string) bool {
+	return !LayerFilter(layer)
+}
+
 func OverviewWorker(jobs <-chan string, results chan<- string) {
 	for job := range jobs {
 		var err error = nil
 
-		curTile, basepath := pathToTile(job)
+		curTile, basepath := PathToTile(job)
 
 		img1 := filepath.Join(basepath, curTile.getPath()+".png")
 		tRight := curTile.rightTile()
@@ -93,17 +96,12 @@ func OverviewWorker(jobs <-chan string, results chan<- string) {
 
 func TilesetMergeWorker(jobs <-chan string, results chan<- string, ts1Dir string, ts2Dir string) {
 	for job := range jobs {
-		curTile, _ := pathToTile(job)
+		curTile, _ := PathToTile(job)
 		outImg := job
 		ts1File := ts1Dir + "/" + curTile.getPath() + ".png"
 		ts2File := ts2Dir + "/" + curTile.getPath() + ".png"
 		os.MkdirAll(filepath.Dir(outImg), 0755)
-		// if intersect.PointInBBox(curTile.xyPoint()) {
-		// 	err := MergeTiles(ts1File, ts2File, outImg)
-		// 	if err != nil {
-		// 		log.Error("Could not merge images: ", err.Error())
-		// 	}
-		// } else {
+
 		ts1Ex := fileExists(ts1File)
 		ts2Ex := fileExists(ts2File)
 
@@ -117,13 +115,44 @@ func TilesetMergeWorker(jobs <-chan string, results chan<- string, ts1Dir string
 			} else {
 				tileCopy = ts2File
 			}
-			// os.Link(tileCopy, outImg)
-			os.Rename(tileCopy, outImg)
+			os.Link(tileCopy, outImg)
+			// os.Rename(tileCopy, outImg)
 
 			logMsg(results, job, "Copying tile")
 		}
 	}
-	// }
+}
+
+func TilesetMergeWorker2(jobs <-chan Tile, results chan<- string, locations map[string][]string, outDir string) {
+	for job := range jobs {
+		curTile := job
+		outImg := filepath.Join(outDir, curTile.getPath()) + ".png"
+		os.MkdirAll(filepath.Dir(outImg), 0755)
+
+		tileLocs := locations[curTile.GetPathXY()]
+
+		vsf := make([]string, 0)
+		for _, v := range tileLocs {
+			vF := appendTileToBase(v, curTile) + ".png"
+			vsf = append(vsf, vF)
+		}
+		tileLocs = vsf
+
+		var err error = nil
+		if len(tileLocs) > 1 {
+			err = MergeNTiles(tileLocs, outImg)
+		} else if len(tileLocs) == 1 {
+			err = os.Link(tileLocs[0], outImg)
+		}
+		if err != nil {
+			log.Error().Err(err).Msgf("Error creating output tile: %v", outImg)
+		}
+		logMsg(results, outImg, "Done")
+	}
+}
+
+func appendTileToBase(base string, tile Tile) string {
+	return filepath.Join(base, tile.getPath())
 }
 
 func TileTrimWorker(jobs <-chan string, results chan<- string) {
@@ -131,15 +160,22 @@ func TileTrimWorker(jobs <-chan string, results chan<- string) {
 		println(job)
 		basepath := job
 		workingPath := filepath.Join(basepath, "18")
-		bbx := BBoxFromTileset(workingPath)
+		bbx, err := BBoxFromTileset(workingPath)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to create bbox")
+			break
+		}
 
-		sides := [4]string{"left", "right", "up", "bottom"}
+		sides := [4]string{"left", "right", "top", "bottom"}
 
 		for _, side := range sides {
 			checkLine := bbx.getSideLine(side)
 			toRemove := BBx(bbx.Origin(), bbx.Origin())
 			if side == "right" || side == "bottom" {
 				toRemove = BBx(bbx.Extent(), bbx.Extent())
+			}
+			if side == "top" {
+				print("top")
 			}
 			isWhite := checkLine.isBBoxWhite(basepath, 18)
 			for ; isWhite; isWhite = checkLine.isBBoxWhite(basepath, 18) {
@@ -170,7 +206,7 @@ func VectorMergeWorker(jobs <-chan string, results chan<- string) {
 		var err error = nil
 		// print(job)
 		// curDir := filepath.Dir(job)
-		curTile, basedir := pathToTile(job)
+		curTile, basedir := PathToTile(job)
 
 		y := StripExt(filepath.Base(job))
 

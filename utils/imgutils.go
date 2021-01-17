@@ -74,7 +74,7 @@ func GenerateOverviewTile(outName string, img1 string, img2 string, img3 string,
 		var imgDec image.Image
 		if err != nil {
 			log.Debug().Msgf("Could not open image, using white: %v", imgLoc)
-			imgDec = image.NewUniform(color.White)
+			imgDec = image.NewUniform(TRANSP)
 		} else {
 			imgDec, err = png.Decode(img)
 		}
@@ -106,6 +106,44 @@ func GenerateOverviewTile(outName string, img1 string, img2 string, img3 string,
 
 }
 
+func MergeNTiles(imgLocs []string, outImg string) error {
+	// img, err := decodeImagePath("/Users/solidsilver/Code/USFS/TilemergeTest/GPEastFSTopo/18/42871/90988.png")
+	// println(img.Bounds().Max.X)
+	imgs := make([]image.Image, len(imgLocs))
+	for i, imgLoc := range imgLocs {
+		img, err := DecodeImagePath(imgLoc)
+		if err != nil {
+			log.Debug().Msgf("Could not open image, using transparent: %v", imgLoc)
+			img = image.NewUniform(TRANSP)
+		}
+		imgs[i] = img
+	}
+
+	bgWidth, bgHeight := 256, 256
+	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
+
+	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{TRANSP}, image.ZP, draw.Src)
+
+	for _, img := range imgs {
+		draw.Draw(bgImg, img.Bounds(), img, image.ZP, draw.Over)
+	}
+
+	out, err := os.Create(outImg)
+	if err != nil {
+		log.Error().Msg("Could not create output image")
+		return err
+	}
+	defer out.Close()
+	// var opt jpeg.Options
+	// opt.Quality = 80
+	// err = jpeg.Encode(out, bgImg, &opt)
+	err = png.Encode(out, bgImg)
+	if err != nil {
+		log.Error().Msg("Could not encode output image")
+	}
+	return err
+}
+
 func MergeTiles(img1 string, img2 string, outImg string) error {
 
 	// imgFile1, err := os.Open(img1)
@@ -131,12 +169,12 @@ func MergeTiles(img1 string, img2 string, outImg string) error {
 	// 	return err
 	// }
 
-	img1D, err := decodeImagePath(img1)
+	img1D, err := DecodeImagePath(img1)
 	if err != nil {
 		return err
 	}
 
-	img2D, err := decodeImagePath(img2)
+	img2D, err := DecodeImagePath(img2)
 	if err != nil {
 		return err
 	}
@@ -147,7 +185,7 @@ func MergeTiles(img1 string, img2 string, outImg string) error {
 	bgWidth, bgHeight := 256, 256
 	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
 
-	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{white}, image.ZP, draw.Src)
+	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{transp}, image.ZP, draw.Src)
 
 	//TODO: Might need to check for transparent as well as white pixels
 
@@ -202,7 +240,7 @@ func GetPixelPercent(img image.Image, col color.Color) float64 {
 }
 
 func canDeleteImg(imgPath string) bool {
-	img, err := decodeImagePath(imgPath)
+	img, err := DecodeImagePath(imgPath)
 	if err != nil {
 		return false
 	}
@@ -227,7 +265,7 @@ func pixelIsTransparent(col color.Color) bool {
 
 func CleanTileEdge(imgPath string, edge int) {
 	println(imgPath)
-	img, _ := decodeImagePath(imgPath)
+	img, _ := DecodeImagePath(imgPath)
 	x, y := 0, 0
 	pxRng := IntRange(0, 256)
 	if edge%2 == 0 {
@@ -287,18 +325,35 @@ func ReplaceColor(img image.Image, col color.Color, repl color.Color) image.Imag
 	return m
 }
 
-func decodeImagePath(imgPath string) (image.Image, error) {
+func DecodeImagePath(imgPath string) (image.Image, error) {
+	// println("imgPath: ", imgPath)
 	imgFile, err := os.Open(imgPath)
 	if err != nil {
 		log.Error().Err(err).Msgf("Could not open img: %v", imgPath)
 		return nil, err
 	}
-	defer imgFile.Close()
+	// tmpImg, err := ioutil.ReadFile(imgPath)
+	// // ioutil.Rea
+
+	// imgReader := bytes.NewReader(tmpImg)
+
+	// // DEBUG CODE
+	// stat, err := imgFile.Stat()
+	// if err != nil {
+	// 	print("Unexpected err")
+	// }
+	// println("File stat.Mode: ", stat.Size())
+	// END DEBUG CODE
+
 	img, err := png.Decode(imgFile)
+	// img, err := png.Decode(imgReader)
+	// img, imgType, err := image.Decode(imgFile)
+	// println("Image type: ", imgType)
 	if err != nil {
 		log.Error().Err(err).Msgf("Could not decode img: %v", imgPath)
 		return nil, err
 	}
+	defer imgFile.Close()
 	return img, nil
 }
 

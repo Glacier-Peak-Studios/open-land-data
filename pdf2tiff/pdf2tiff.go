@@ -14,7 +14,7 @@ import (
 func main() {
 
 	workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
-	// outDir := flag.String("o", "./", "Folder to output the tiff files")
+	outDir := flag.String("o", "./", "Folder to output the tiff files")
 	inDir := flag.String("i", "./", "Folder with the pdf files")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
 		" 0 - Only prints error messages\n"+
@@ -60,7 +60,7 @@ func main() {
 	// defArgs := {"GPWestFSTopo.pdf -D 750 -r \"$(cat rmlayers.txt)\" -t EPSG:3857"}
 	for i := 0; i < *workersOpt; i++ {
 		// go utils.CommandRunner(jobs, results, "./convert-geopdf.py", "-D", "750", "-r", "\"$(cat rmlayers.txt)\"", "-t", "EPSG:3857")
-		go utils.PDF2TiffWorker(jobs, results, "gdalwarp", "-co", "TILED=YES", "-co", "TFW=YES", "-t_srs", "EPSG:3857", "--config", "GDAL_PDF_DPI", "750")
+		go utils.PDF2TiffWorker(jobs, results, *outDir, "gdalwarp", "-co", "TILED=YES", "-co", "TFW=YES", "-t_srs", "EPSG:3857", "-r", "near", "-overwrite", "-dstnodata", "255", "--config", "GDAL_PDF_DPI", "750")
 	}
 	queueSources(sources, jobs)
 

@@ -8,54 +8,64 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type tile struct {
+type Tile struct {
 	x int
 	y int
 	z int
 }
 
-func (t *tile) getPath() string {
+func MakeTile(x int, y int, z int) Tile {
+	return Tile{x: x, y: y, z: z}
+}
+
+func (t *Tile) getPath() string {
 	xStr := strconv.Itoa(t.x)
 	yStr := strconv.Itoa(t.y)
 	zStr := strconv.Itoa(t.z)
 	return filepath.Join(zStr, xStr, yStr)
 }
 
-func (t *tile) getPathZX() string {
+func (t *Tile) getPathZX() string {
 	xStr := strconv.Itoa(t.x)
 	zStr := strconv.Itoa(t.z)
 	return filepath.Join(zStr, xStr)
 }
 
-func (t *tile) leftTile() tile {
-	return tile{x: t.x - 1, y: t.y, z: t.z}
+func (t *Tile) GetPathXY() string {
+	xStr := strconv.Itoa(t.x)
+	yStr := strconv.Itoa(t.y)
+	return filepath.Join(xStr, yStr)
 }
 
-func (t *tile) rightTile() tile {
-	return tile{x: t.x + 1, y: t.y, z: t.z}
+func (t *Tile) leftTile() Tile {
+	return Tile{x: t.x - 1, y: t.y, z: t.z}
 }
 
-func (t *tile) upTile() tile {
-	return tile{x: t.x, y: t.y - 1, z: t.z}
+func (t *Tile) rightTile() Tile {
+	return Tile{x: t.x + 1, y: t.y, z: t.z}
 }
 
-func (t *tile) downTile() tile {
-	return tile{x: t.x, y: t.y + 1, z: t.z}
+func (t *Tile) upTile() Tile {
+	return Tile{x: t.x, y: t.y - 1, z: t.z}
 }
 
-func (t *tile) overviewTile() tile {
-	return tile{x: t.x / 2, y: t.y / 2, z: t.z - 1}
+func (t *Tile) downTile() Tile {
+	return Tile{x: t.x, y: t.y + 1, z: t.z}
 }
 
-func (t *tile) xyPoint() Point {
+func (t *Tile) overviewTile() Tile {
+	return Tile{x: t.x / 2, y: t.y / 2, z: t.z - 1}
+}
+
+func (t *Tile) xyPoint() Point {
 	return Point{X: t.x, Y: t.y}
 }
 
-func (t *tile) xyzPoint() Point3 {
+func (t *Tile) xyzPoint() Point3 {
 	return Point3{X: t.x, Y: t.y, Z: t.z}
 }
 
-func pathToTile(path string) (tile, string) {
+func PathToTile(path string) (Tile, string) {
 	yStr := StripExt(filepath.Base(path))
 	fdir := filepath.Dir(path)
 	xStr := filepath.Base(fdir)
@@ -72,7 +82,7 @@ func pathToTile(path string) (tile, string) {
 		log.Debug().Err(err).Msg("")
 	}
 
-	retT := tile{x: x, y: y, z: z}
+	retT := Tile{x: x, y: y, z: z}
 
 	return retT, basepath
 }
@@ -208,7 +218,7 @@ func (b *BBox) getSideLine(side string) BBox {
 func (b *BBox) isBBoxWhite(basepath string, z int) bool {
 	for ix := b.Origin().X; ix <= b.Extent().X; ix++ {
 		for iy := b.Origin().Y; iy <= b.Extent().Y; iy++ {
-			tile := tile{x: ix, y: iy, z: z}
+			tile := Tile{x: ix, y: iy, z: z}
 			imgFile := filepath.Join(basepath, tile.getPath()+".png")
 			if !canDeleteImg(imgFile) {
 				return false

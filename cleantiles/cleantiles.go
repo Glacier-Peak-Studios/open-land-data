@@ -62,14 +62,9 @@ func main() {
 	jobs := make(chan string, jobCount)
 	results := make(chan string, jobCount)
 
-	// rmlayers := "\"" + utils.FtoStr("rmlayers.txt") + "\""
-
 	log.Warn().Msgf("Running with %v workers", *workersOpt)
-	// defArgs := {"GPWestFSTopo.pdf -D 750 -r \"$(cat rmlayers.txt)\" -t EPSG:3857"}
 	for i := 0; i < *workersOpt; i++ {
 		go utils.TileTrimWorker(jobs, results)
-		// go utils.CommandRunner(jobs, results, "./convert-geopdf.py", "-D", "750", "-r", "\"$(cat rmlayers.txt)\"", "-t", "EPSG:3857")
-		// go utils.PDF2TiffWorker(jobs, results, "gdalwarp", "-co", "TILED=YES", "-co", "TFW=YES", "-t_srs", "EPSG:3857", "--config", "GDAL_PDF_DPI", "750")
 	}
 	queueSources(sources, jobs)
 

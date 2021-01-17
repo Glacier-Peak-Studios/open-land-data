@@ -17,7 +17,7 @@ import (
 func main() {
 
 	workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
-	outDir := flag.String("i", "/Users/solidsilver/Code/USFS/TilemergeTest/GPTilemerge", "The root directory of the source files")
+	inDir := flag.String("i", "", "The root directory of the source files")
 	zRange := flag.String("z", "18", "Zoom levels to generate. (Ex. \"2-16\") Must start with current zoom level")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
 		" 0 - Only prints error messages\n"+
@@ -55,7 +55,7 @@ func main() {
 	}
 	log.Info().Msgf("Generating zoom from %v to %v", zMax, zMin)
 
-	CreateOverviewRange(zMax, zMin, *outDir, *workersOpt)
+	CreateOverviewRange(zMax, zMin, *inDir, *workersOpt)
 
 }
 
@@ -68,7 +68,8 @@ func CreateOverviewRange(zMax int, zMin int, dir string, workers int) {
 func CreateOverview(dir string, workers int) {
 	log.Warn().Msgf("Searching sources dir: %v", dir)
 	sources, _ := utils.WalkMatch(dir, "*.png")
-	sources = utils.Filter(sources, isEvenTile)
+	// sources = utils.Filter(sources, isEvenTile)
+	sources = utils.SetMap(sources, utils.OverviewRoot)
 
 	jobCount := len(sources)
 	jobs := make(chan string, jobCount)
