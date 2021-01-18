@@ -58,6 +58,9 @@ func LayerFilter(layer string) bool {
 	if strings.HasPrefix(layer, "Quadrangle.UTM") {
 		return false
 	}
+	if strings.HasPrefix(layer, "Ownership") {
+		return false
+	}
 
 	return true
 }
@@ -155,11 +158,11 @@ func appendTileToBase(base string, tile Tile) string {
 	return filepath.Join(base, tile.getPath())
 }
 
-func TileTrimWorker(jobs <-chan string, results chan<- string) {
+func TileTrimWorker(jobs <-chan string, results chan<- string, zoom int) {
 	for job := range jobs {
 		println(job)
 		basepath := job
-		workingPath := filepath.Join(basepath, "18")
+		workingPath := filepath.Join(basepath, strconv.Itoa(zoom))
 		bbx, err := BBoxFromTileset(workingPath)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to create bbox")
@@ -177,14 +180,14 @@ func TileTrimWorker(jobs <-chan string, results chan<- string) {
 			if side == "top" {
 				print("top")
 			}
-			isWhite := checkLine.isBBoxWhite(basepath, 18)
-			for ; isWhite; isWhite = checkLine.isBBoxWhite(basepath, 18) {
+			isWhite := checkLine.isBBoxWhite(basepath, zoom)
+			for ; isWhite; isWhite = checkLine.isBBoxWhite(basepath, zoom) {
 				toRemove, _ = GetBBoxMerge(toRemove, checkLine)
 				bbx.ChangeSide(side, -1)
 				checkLine = bbx.getSideLine(side)
 			}
-			removeTilesInBBox(toRemove, basepath, 18)
-			// CleanBBoxEdge(checkLine, side, basepath, 18)
+			removeTilesInBBox(toRemove, basepath, zoom)
+			// CleanBBoxEdge(checkLine, side, basepath, zoom)
 
 		}
 		lvlDirs, _ := ioutil.ReadDir(workingPath)

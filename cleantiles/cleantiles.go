@@ -16,6 +16,7 @@ func main() {
 
 	workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
 	// outDir := flag.String("o", "./", "Folder to output the tiff files")
+	zoomLvl := flag.Int("z", 17, "Zoom level of the tileset to clean")
 	inDir := flag.String("i", "./", "Folder with the pdf files")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
 		" 0 - Only prints error messages\n"+
@@ -64,7 +65,7 @@ func main() {
 
 	log.Warn().Msgf("Running with %v workers", *workersOpt)
 	for i := 0; i < *workersOpt; i++ {
-		go utils.TileTrimWorker(jobs, results)
+		go utils.TileTrimWorker(jobs, results, *zoomLvl)
 	}
 	queueSources(sources, jobs)
 

@@ -90,30 +90,24 @@ func GenerateOverviewTile(outName string, img1 string, img2 string, img3 string,
 	draw.Draw(bgImg, image.Rect(0, 256, 256, 512), imgs[2], image.ZP, draw.Over)
 	draw.Draw(bgImg, image.Rect(256, 256, 512, 512), imgs[3], image.ZP, draw.Over)
 
-	imgOut := resize.Resize(256, 256, bgImg, resize.MitchellNetravali)
+	imgOut := resize.Resize(256, 256, bgImg, resize.NearestNeighbor)
 
 	os.MkdirAll(filepath.Dir(outName), 0755)
-	out, err := os.Create(outName)
-	if err != nil {
-		log.Fatal().Err(err).Msg("")
-	}
-	defer out.Close()
+	err := encodePNGToPath(outName, imgOut)
 
-	// write new image to file
-	png.Encode(out, imgOut)
-
-	return nil
+	return err
 
 }
 
-func MergeNTiles(imgLocs []string, outImg string) error {
-	// img, err := decodeImagePath("/Users/solidsilver/Code/USFS/TilemergeTest/GPEastFSTopo/18/42871/90988.png")
-	// println(img.Bounds().Max.X)
-	imgs := make([]image.Image, len(imgLocs))
-	for i, imgLoc := range imgLocs {
-		img, err := DecodeImagePath(imgLoc)
+// MergeNTiles takes a list of image paths and produces a direct
+// composite output of these images to outImg path with a transparent
+// background
+func MergeNTiles(imgPaths []string, outImg string) error {
+	imgs := make([]image.Image, len(imgPaths))
+	for i, imgPath := range imgPaths {
+		img, err := decodePNGFromPath(imgPath)
 		if err != nil {
-			log.Debug().Msgf("Could not open image, using transparent: %v", imgLoc)
+			log.Debug().Msgf("Could not open image, using transparent: %v", imgPath)
 			img = image.NewUniform(TRANSP)
 		}
 		imgs[i] = img
@@ -128,53 +122,18 @@ func MergeNTiles(imgLocs []string, outImg string) error {
 		draw.Draw(bgImg, img.Bounds(), img, image.ZP, draw.Over)
 	}
 
-	out, err := os.Create(outImg)
-	if err != nil {
-		log.Error().Msg("Could not create output image")
-		return err
-	}
-	defer out.Close()
-	// var opt jpeg.Options
-	// opt.Quality = 80
-	// err = jpeg.Encode(out, bgImg, &opt)
-	err = png.Encode(out, bgImg)
-	if err != nil {
-		log.Error().Msg("Could not encode output image")
-	}
+	err := encodePNGToPath(outImg, bgImg)
 	return err
 }
 
 func MergeTiles(img1 string, img2 string, outImg string) error {
 
-	// imgFile1, err := os.Open(img1)
-	// if err != nil {
-	// 	log.Error().Msg("Could not open img1")
-	// 	return err
-	// }
-	// defer imgFile1.Close()
-	// imgFile2, err := os.Open(img2)
-	// if err != nil {
-	// 	log.Error().Msg("Could not open img2")
-	// 	return err
-	// }
-	// defer imgFile2.Close()
-	// img1D, err := png.Decode(imgFile1)
-	// if err != nil {
-	// 	log.Error().Msg("Could not decode img1")
-	// 	return err
-	// }
-	// img2D, err := png.Decode(imgFile2)
-	// if err != nil {
-	// 	log.Error().Msg("Could not decode img2")
-	// 	return err
-	// }
-
-	img1D, err := DecodeImagePath(img1)
+	img1D, err := decodePNGFromPath(img1)
 	if err != nil {
 		return err
 	}
 
-	img2D, err := DecodeImagePath(img2)
+	img2D, err := decodePNGFromPath(img2)
 	if err != nil {
 		return err
 	}
@@ -186,8 +145,6 @@ func MergeTiles(img1 string, img2 string, outImg string) error {
 	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
 
 	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{transp}, image.ZP, draw.Src)
-
-	//TODO: Might need to check for transparent as well as white pixels
 
 	img1WhiteP := GetPixelPercent(img1D, white)
 	img2WhiteP := GetPixelPercent(img2D, white)
@@ -207,20 +164,7 @@ func MergeTiles(img1 string, img2 string, outImg string) error {
 		draw.Draw(bgImg, img2D.Bounds(), img2D, image.ZP, draw.Over)
 		draw.Draw(bgImg, img1D.Bounds(), img1D, image.ZP, draw.Over)
 	}
-
-	out, err := os.Create(outImg)
-	if err != nil {
-		log.Error().Msg("Could not create output image")
-		return err
-	}
-	defer out.Close()
-	// var opt jpeg.Options
-	// opt.Quality = 80
-	// err = jpeg.Encode(out, bgImg, &opt)
-	err = png.Encode(out, bgImg)
-	if err != nil {
-		log.Error().Msg("Could not encode output image")
-	}
+	err = encodePNGToPath(outImg, bgImg)
 	return err
 }
 
@@ -240,7 +184,7 @@ func GetPixelPercent(img image.Image, col color.Color) float64 {
 }
 
 func canDeleteImg(imgPath string) bool {
-	img, err := DecodeImagePath(imgPath)
+	img, err := decodePNGFromPath(imgPath)
 	if err != nil {
 		return false
 	}
@@ -259,13 +203,11 @@ func canDeleteImg(imgPath string) bool {
 
 func pixelIsTransparent(col color.Color) bool {
 	_, _, _, a := col.RGBA()
-	// println("Transp:", a)
 	return a == 0
 }
 
-func CleanTileEdge(imgPath string, edge int) {
-	println(imgPath)
-	img, _ := DecodeImagePath(imgPath)
+func CleanTileEdge(imgPath string, edge int) error {
+	img, _ := decodePNGFromPath(imgPath)
 	x, y := 0, 0
 	pxRng := IntRange(0, 256)
 	if edge%2 == 0 {
@@ -301,10 +243,8 @@ func CleanTileEdge(imgPath string, edge int) {
 
 	os.Remove(imgPath)
 
-	err := encodeImageToPath(imgPath, m)
-	if err != nil {
-		println(err.Error())
-	}
+	err := encodePNGToPath(imgPath, m)
+	return err
 
 }
 
@@ -325,39 +265,22 @@ func ReplaceColor(img image.Image, col color.Color, repl color.Color) image.Imag
 	return m
 }
 
-func DecodeImagePath(imgPath string) (image.Image, error) {
-	// println("imgPath: ", imgPath)
+func decodePNGFromPath(imgPath string) (image.Image, error) {
 	imgFile, err := os.Open(imgPath)
 	if err != nil {
 		log.Error().Err(err).Msgf("Could not open img: %v", imgPath)
 		return nil, err
 	}
-	// tmpImg, err := ioutil.ReadFile(imgPath)
-	// // ioutil.Rea
-
-	// imgReader := bytes.NewReader(tmpImg)
-
-	// // DEBUG CODE
-	// stat, err := imgFile.Stat()
-	// if err != nil {
-	// 	print("Unexpected err")
-	// }
-	// println("File stat.Mode: ", stat.Size())
-	// END DEBUG CODE
-
+	defer imgFile.Close()
 	img, err := png.Decode(imgFile)
-	// img, err := png.Decode(imgReader)
-	// img, imgType, err := image.Decode(imgFile)
-	// println("Image type: ", imgType)
 	if err != nil {
 		log.Error().Err(err).Msgf("Could not decode img: %v", imgPath)
 		return nil, err
 	}
-	defer imgFile.Close()
 	return img, nil
 }
 
-func encodeImageToPath(imgPath string, img image.Image) error {
+func encodePNGToPath(imgPath string, img image.Image) error {
 	out, err := os.Create(imgPath)
 	if err != nil {
 		log.Error().Msg("Could not create output image")

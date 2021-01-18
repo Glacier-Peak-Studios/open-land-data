@@ -23,11 +23,9 @@ func main() {
 	switch *verboseOpt {
 	case 0:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
-		// log.SetLevel(log.ErrorLevel)
 		break
 	case 1:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-		// log.SetLevel(log.WarnLevel)
 		break
 	case 2:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
@@ -35,7 +33,6 @@ func main() {
 	case 3:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-		// log.SetReportCaller(true)
 		break
 	default:
 		break
@@ -50,26 +47,3 @@ func main() {
 		println(val)
 	}
 }
-
-// func LayerFilter(layer string) bool {
-// 	if strings.HasPrefix(layer, "Quadrangle.Neatline") {
-// 		return false
-// 	}
-// 	if strings.HasPrefix(layer, "Quadrangle.2_5") {
-// 		return false
-// 	}
-// 	if strings.HasPrefix(layer, "Quadrangle_Ext") {
-// 		return false
-// 	}
-// 	if strings.HasPrefix(layer, "Adjacent") {
-// 		return false
-// 	}
-// 	if strings.HasPrefix(layer, "Other") {
-// 		return false
-// 	}
-// 	if strings.HasPrefix(layer, "Quadrangle.UTM") {
-// 		return false
-// 	}
-
-// 	return true
-// }
