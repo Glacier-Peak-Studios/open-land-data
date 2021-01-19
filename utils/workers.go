@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"image"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -152,6 +153,96 @@ func TilesetMergeWorker2(jobs <-chan Tile, results chan<- string, locations map[
 		}
 		logMsg(results, outImg, "Done")
 	}
+}
+
+func FixBackgroundWorker(jobs <-chan Tile, results chan<- string, validTiles map[string]bool, inDir string, outDir string) {
+	for job := range jobs {
+		curTile := job
+		imgInPath := filepath.Join(inDir, curTile.getPath()+".png")
+		imgOutPath := filepath.Join(outDir, curTile.getPath())
+		os.MkdirAll(filepath.Dir(imgOutPath), 0755)
+
+		// tileLocs := validTiles[curTile.GetPathXY()]
+		surround := make([][]bool, 3)
+		for i := range surround {
+			surround[i] = make([]bool, 3)
+		}
+		for x := -1; x < 2; x++ {
+			for y := -1; y < 2; y++ {
+				tmpTile := MakeTile(curTile.x+x, curTile.y+y, curTile.z)
+				surround[y+1][x+1] = validTiles[tmpTile.GetPathXY()]
+			}
+		}
+		imgIn, _ := DecodePNGFromPath(imgInPath)
+		missingEdges := getMissingEdges(surround)
+		var imgOut image.Image
+		var bgRects []image.Rectangle
+
+		if len(missingEdges) == 0 {
+			missingCorner := getMissingCorners(surround)
+			if missingCorner > -1 {
+				bgRects, _ = GetCoverageRectCorner(imgIn, missingCorner)
+			} else {
+				bgRects = append(bgRects, image.Rect(0, 0, 256, 256))
+			}
+		} else {
+			rect, _ := GetCoverageRectSide(imgIn, missingEdges[0])
+			if len(missingEdges) > 1 {
+				rect2, _ := GetCoverageRectSide(imgIn, missingEdges[1])
+				rect = rect.Intersect(rect2)
+			}
+			bgRects = append(bgRects, rect)
+		}
+
+		imgOut = ImgOverRects(imgIn, bgRects)
+
+		err := EncodePNGToPath(imgOutPath, imgOut)
+		if err != nil {
+			log.Error().Err(err).Msgf("Error creating output tile: %v", imgOutPath)
+		}
+		logMsg(results, imgOutPath, "Done")
+	}
+}
+
+func getMissingEdges(surround [][]bool) []int {
+	// var missingEdges []Point
+	var missingEdges []int
+	// vals :=
+	for _, x := range []int{-1, 1} {
+		if !surround[1][x+1] {
+			missingEdges = append(missingEdges, coordToSideNum(x, 0))
+		}
+	}
+	for _, y := range []int{-1, 1} {
+		if !surround[y+1][1] {
+			missingEdges = append(missingEdges, coordToSideNum(0, y))
+		}
+	}
+	return missingEdges
+}
+
+func coordToSideNum(x, y int) int {
+	return (x+1)/2 + (x+2+(y+1)/2)*AbsInt(y)
+}
+
+func getMissingCorners(surround [][]bool) int {
+	// var missingCorners []Point
+	// var missingCorners []int
+	// vals :=
+	for _, x := range []int{-1, 1} {
+		for _, y := range []int{-1, 1} {
+			if !surround[y+1][x+1] {
+				return coordToCornerNum(x, y)
+				// missingCorners = append(missingCorners, coordToCornerNum(x, y))
+			}
+		}
+	}
+	// return missingCorners
+	return -1
+}
+
+func coordToCornerNum(x, y int) int {
+	return (x+y+2)/4*AbsInt(x+y)/2 + (5+x)/2*(1-x*y)/2
 }
 
 func appendTileToBase(base string, tile Tile) string {

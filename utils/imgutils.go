@@ -93,7 +93,7 @@ func GenerateOverviewTile(outName string, img1 string, img2 string, img3 string,
 	imgOut := resize.Resize(256, 256, bgImg, resize.NearestNeighbor)
 
 	os.MkdirAll(filepath.Dir(outName), 0755)
-	err := encodePNGToPath(outName, imgOut)
+	err := EncodePNGToPath(outName, imgOut)
 
 	return err
 
@@ -105,7 +105,7 @@ func GenerateOverviewTile(outName string, img1 string, img2 string, img3 string,
 func MergeNTiles(imgPaths []string, outImg string) error {
 	imgs := make([]image.Image, len(imgPaths))
 	for i, imgPath := range imgPaths {
-		img, err := decodePNGFromPath(imgPath)
+		img, err := DecodePNGFromPath(imgPath)
 		if err != nil {
 			log.Debug().Msgf("Could not open image, using transparent: %v", imgPath)
 			img = image.NewUniform(TRANSP)
@@ -122,18 +122,18 @@ func MergeNTiles(imgPaths []string, outImg string) error {
 		draw.Draw(bgImg, img.Bounds(), img, image.ZP, draw.Over)
 	}
 
-	err := encodePNGToPath(outImg, bgImg)
+	err := EncodePNGToPath(outImg, bgImg)
 	return err
 }
 
 func MergeTiles(img1 string, img2 string, outImg string) error {
 
-	img1D, err := decodePNGFromPath(img1)
+	img1D, err := DecodePNGFromPath(img1)
 	if err != nil {
 		return err
 	}
 
-	img2D, err := decodePNGFromPath(img2)
+	img2D, err := DecodePNGFromPath(img2)
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func MergeTiles(img1 string, img2 string, outImg string) error {
 		draw.Draw(bgImg, img2D.Bounds(), img2D, image.ZP, draw.Over)
 		draw.Draw(bgImg, img1D.Bounds(), img1D, image.ZP, draw.Over)
 	}
-	err = encodePNGToPath(outImg, bgImg)
+	err = EncodePNGToPath(outImg, bgImg)
 	return err
 }
 
@@ -184,7 +184,7 @@ func GetPixelPercent(img image.Image, col color.Color) float64 {
 }
 
 func canDeleteImg(imgPath string) bool {
-	img, err := decodePNGFromPath(imgPath)
+	img, err := DecodePNGFromPath(imgPath)
 	if err != nil {
 		return false
 	}
@@ -206,8 +206,21 @@ func pixelIsTransparent(col color.Color) bool {
 	return a == 0
 }
 
+func ImgOverRects(img image.Image, rects []image.Rectangle) image.Image {
+	bgWidth, bgHeight := 256, 256
+	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
+
+	for _, rect := range rects {
+		draw.Draw(bgImg, rect, &image.Uniform{color.White}, image.ZP, draw.Over)
+	}
+
+	draw.Draw(bgImg, img.Bounds(), img, image.ZP, draw.Over)
+
+	return bgImg
+}
+
 func CleanTileEdge(imgPath string, edge int) error {
-	img, _ := decodePNGFromPath(imgPath)
+	img, _ := DecodePNGFromPath(imgPath)
 	x, y := 0, 0
 	pxRng := IntRange(0, 256)
 	if edge%2 == 0 {
@@ -243,10 +256,95 @@ func CleanTileEdge(imgPath string, edge int) error {
 
 	os.Remove(imgPath)
 
-	err := encodePNGToPath(imgPath, m)
+	err := EncodePNGToPath(imgPath, m)
 	return err
 
 }
+
+func GetCoverageRectSide(img image.Image, edge int) (image.Rectangle, error) {
+	// img, _ := decodePNGFromPath(imgPath)
+	x, y := 0, 0
+	pxRng := IntRange(0, 256)
+	if edge%2 == 1 {
+		pxRng = IntRange(256, 0)
+	}
+	outer := &x
+	inner := &y
+	if edge > 1 {
+		outer = &y
+		inner = &x
+	}
+
+	// size := img.Bounds().Max
+	// m := image.NewRGBA(image.Rect(0, 0, size.X, size.Y))
+	edgeFound := false
+	for _, *outer = range pxRng {
+		for _, *inner = range pxRng {
+			pxCol := img.At(x, y)
+			if !pixelIsTransparent(pxCol) {
+				edgeFound = true
+				break
+			}
+		}
+		if edgeFound {
+			*inner = pxRng[0]
+			break
+		}
+	}
+	pxRngLastIdx := len(pxRng) - 1
+	covgRect := image.Rect(x, y, pxRng[pxRngLastIdx], pxRng[pxRngLastIdx])
+
+	return covgRect, nil
+
+}
+
+func GetCoverageRectCorner(img image.Image, corner int) ([]image.Rectangle, error) {
+	// img, _ := decodePNGFromPath(imgPath)
+	// x, y := 0, 0
+
+	xRng := IntRange(0, 256)
+	if corner%2 == 1 {
+		xRng = IntRange(256, 0)
+	}
+	yRng := IntRange(0, 256)
+	if corner > 1 {
+		yRng = IntRange(256, 0)
+	}
+	xFound, yFound := false, false
+	xIdx, yIdx := 0, 0
+	for !(xFound && yFound) {
+		for revIdx := xIdx; revIdx >= 0 && !xFound; revIdx-- {
+			x := xRng[revIdx]
+			y := yRng[yIdx]
+			pxCol := img.At(x, y)
+			if !pixelIsTransparent(pxCol) {
+				xFound = true
+			}
+		}
+		if !xFound {
+			xIdx++
+		}
+		for revIdx := yIdx; revIdx >= 0 && !yFound; revIdx-- {
+			x := xRng[xIdx]
+			y := yRng[revIdx]
+			pxCol := img.At(x, y)
+			if !pixelIsTransparent(pxCol) {
+				yFound = true
+			}
+		}
+		if !yFound {
+			yIdx++
+		}
+
+	}
+	rect1 := image.Rect(xRng[xIdx], yRng[0], xRng[len(xRng)-1], yRng[len(yRng)-1])
+	rect2 := image.Rect(xRng[0], yRng[yIdx], xRng[len(xRng)-1], yRng[len(yRng)-1])
+
+	return []image.Rectangle{rect1, rect2}, nil
+
+}
+
+// func checkImgLine()
 
 func ReplaceColor(img image.Image, col color.Color, repl color.Color) image.Image {
 	size := img.Bounds().Max
@@ -265,7 +363,7 @@ func ReplaceColor(img image.Image, col color.Color, repl color.Color) image.Imag
 	return m
 }
 
-func decodePNGFromPath(imgPath string) (image.Image, error) {
+func DecodePNGFromPath(imgPath string) (image.Image, error) {
 	imgFile, err := os.Open(imgPath)
 	if err != nil {
 		log.Error().Err(err).Msgf("Could not open img: %v", imgPath)
@@ -280,7 +378,7 @@ func decodePNGFromPath(imgPath string) (image.Image, error) {
 	return img, nil
 }
 
-func encodePNGToPath(imgPath string, img image.Image) error {
+func EncodePNGToPath(imgPath string, img image.Image) error {
 	out, err := os.Create(imgPath)
 	if err != nil {
 		log.Error().Msg("Could not create output image")
