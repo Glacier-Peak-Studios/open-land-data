@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	// workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
+	workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
 	in := flag.String("i", "", "Filepath to use for testing")
 	// zRange := flag.String("z", "18", "Zoom levels to generate. (Ex. \"2-16\") Must start with current zoom level")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
@@ -38,19 +38,13 @@ func main() {
 		break
 	}
 
-	tileImg, _ := utils.DecodePNGFromPath(*in)
-
-	rects, _ := utils.GetCoverageRectCorner(tileImg, 1)
-
-	// covRect, _ := utils.GetCoverageRectSide(tileImg, 1)
-	// covRect1, _ := utils.GetCoverageRectSide(tileImg, 3)
-
-	// covRect := rects[0]
-	// covRect1 := rects[1]
-
-	newImg := utils.ImgOverRects(tileImg, rects)
-
-	utils.EncodePNGToPath("test.png", newImg)
+	println("Reading in all files from %v", *in)
+	fileList := utils.GetAllTiles2(*in, *workersOpt)
+	println("Got files, printing")
+	for _, file := range fileList {
+		println("-> file ->")
+		println(file)
+	}
 
 	// intersect := covRect.Intersect(covRect1)
 

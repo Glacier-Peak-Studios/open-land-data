@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/rs/zerolog/log"
 )
@@ -76,23 +77,26 @@ func OverviewWorker(jobs <-chan string, results chan<- string) {
 
 		curTile, basepath := PathToTile(job)
 
-		img1 := filepath.Join(basepath, curTile.getPath()+".png")
+		img1 := filepath.Join(basepath, curTile.getPath())
 		tRight := curTile.rightTile()
-		img2 := filepath.Join(basepath, tRight.getPath()+".png")
+		img2 := filepath.Join(basepath, tRight.getPath())
 		tDown := curTile.downTile()
-		img3 := filepath.Join(basepath, tDown.getPath()+".png")
+		img3 := filepath.Join(basepath, tDown.getPath())
 		tDiag := tRight.downTile()
-		img4 := filepath.Join(basepath, tDiag.getPath()+".png")
+		img4 := filepath.Join(basepath, tDiag.getPath())
 
 		tOver := curTile.overviewTile()
-		imgOut := filepath.Join(basepath, tOver.getPath()+".png")
+		imgOut := filepath.Join(basepath, tOver.getPath())
 
-		err = GenerateOverviewTile(imgOut, img1, img2, img3, img4)
+		if !fileExists(imgOut) {
 
-		if err != nil {
-			logMsg(results, job, err.Error())
-		} else {
-			logMsg(results, imgOut, "Job done")
+			err = GenerateOverviewTile(imgOut, img1, img2, img3, img4)
+
+			if err != nil {
+				logMsg(results, job, err.Error())
+			} else {
+				logMsg(results, imgOut, "Job done")
+			}
 		}
 
 	}
@@ -131,27 +135,32 @@ func TilesetMergeWorker2(jobs <-chan Tile, results chan<- string, locations map[
 	for job := range jobs {
 		curTile := job
 		outImg := filepath.Join(outDir, curTile.getPath()) + ".png"
-		os.MkdirAll(filepath.Dir(outImg), 0755)
+		if !fileExists(outImg) {
 
-		tileLocs := locations[curTile.GetPathXY()]
+			os.MkdirAll(filepath.Dir(outImg), 0755)
 
-		vsf := make([]string, 0)
-		for _, v := range tileLocs {
-			vF := appendTileToBase(v, curTile) + ".png"
-			vsf = append(vsf, vF)
-		}
-		tileLocs = vsf
+			tileLocs := locations[curTile.GetPathXY()]
 
-		var err error = nil
-		if len(tileLocs) > 1 {
-			err = MergeNTiles(tileLocs, outImg)
-		} else if len(tileLocs) == 1 {
-			err = os.Link(tileLocs[0], outImg)
+			vsf := make([]string, 0)
+			for _, v := range tileLocs {
+				vF := appendTileToBase(v, curTile) + ".png"
+				vsf = append(vsf, vF)
+			}
+			tileLocs = vsf
+
+			var err error = nil
+			if len(tileLocs) > 1 {
+				err = MergeNTiles(tileLocs, outImg)
+			} else if len(tileLocs) == 1 {
+				err = os.Link(tileLocs[0], outImg)
+			}
+			if err != nil {
+				log.Error().Err(err).Msgf("Error creating output tile: %v", outImg)
+			}
+			logMsg(results, outImg, "Done.")
+		} else {
+			logMsg(results, outImg, "Already exists, done.")
 		}
-		if err != nil {
-			log.Error().Err(err).Msgf("Error creating output tile: %v", outImg)
-		}
-		logMsg(results, outImg, "Done")
 	}
 }
 
@@ -160,47 +169,57 @@ func FixBackgroundWorker(jobs <-chan Tile, results chan<- string, validTiles map
 		curTile := job
 		imgInPath := filepath.Join(inDir, curTile.getPath()+".png")
 		imgOutPath := filepath.Join(outDir, curTile.getPath())
-		os.MkdirAll(filepath.Dir(imgOutPath), 0755)
+		if !fileExists(imgOutPath) {
+			os.MkdirAll(filepath.Dir(imgOutPath), 0755)
 
-		// tileLocs := validTiles[curTile.GetPathXY()]
-		surround := make([][]bool, 3)
-		for i := range surround {
-			surround[i] = make([]bool, 3)
-		}
-		for x := -1; x < 2; x++ {
-			for y := -1; y < 2; y++ {
-				tmpTile := MakeTile(curTile.x+x, curTile.y+y, curTile.z)
-				surround[y+1][x+1] = validTiles[tmpTile.GetPathXY()]
+			// tileLocs := validTiles[curTile.GetPathXY()]
+			surround := make([][]bool, 3)
+			for i := range surround {
+				surround[i] = make([]bool, 3)
 			}
-		}
-		imgIn, _ := DecodePNGFromPath(imgInPath)
-		missingEdges := getMissingEdges(surround)
-		var imgOut image.Image
-		var bgRects []image.Rectangle
-
-		if len(missingEdges) == 0 {
-			missingCorner := getMissingCorners(surround)
-			if missingCorner > -1 {
-				bgRects, _ = GetCoverageRectCorner(imgIn, missingCorner)
+			for x := -1; x < 2; x++ {
+				for y := -1; y < 2; y++ {
+					tmpTile := MakeTile(curTile.x+x, curTile.y+y, curTile.z)
+					surround[y+1][x+1] = validTiles[tmpTile.GetPathXY()]
+				}
+			}
+			imgIn, err := DecodePNGFromPath(imgInPath)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to get image")
+				logMsg(results, imgOutPath, "Failed")
 			} else {
-				bgRects = append(bgRects, image.Rect(0, 0, 256, 256))
+				missingEdges := getMissingEdges(surround)
+				var imgOut image.Image
+				var bgRects []image.Rectangle
+
+				if len(missingEdges) == 0 {
+					missingCorner := getMissingCorners(surround)
+					if missingCorner > -1 {
+						// println(imgInPath)
+						bgRects, _ = GetCoverageRectCorner(imgIn, missingCorner)
+					} else {
+						bgRects = append(bgRects, image.Rect(0, 0, 256, 256))
+					}
+				} else {
+					rect, _ := GetCoverageRectSide(imgIn, missingEdges[0])
+					if len(missingEdges) > 1 {
+						rect2, _ := GetCoverageRectSide(imgIn, missingEdges[1])
+						rect = rect.Intersect(rect2)
+					}
+					bgRects = append(bgRects, rect)
+				}
+
+				imgOut = ImgOverRects(imgIn, bgRects)
+
+				err := EncodePNGToPath(imgOutPath, imgOut)
+				if err != nil {
+					log.Error().Err(err).Msgf("Error creating output tile: %v", imgOutPath)
+				}
+				logMsg(results, imgOutPath, "Done")
 			}
 		} else {
-			rect, _ := GetCoverageRectSide(imgIn, missingEdges[0])
-			if len(missingEdges) > 1 {
-				rect2, _ := GetCoverageRectSide(imgIn, missingEdges[1])
-				rect = rect.Intersect(rect2)
-			}
-			bgRects = append(bgRects, rect)
+			logMsg(results, imgOutPath, "Out img already exists. Done")
 		}
-
-		imgOut = ImgOverRects(imgIn, bgRects)
-
-		err := EncodePNGToPath(imgOutPath, imgOut)
-		if err != nil {
-			log.Error().Err(err).Msgf("Error creating output tile: %v", imgOutPath)
-		}
-		logMsg(results, imgOutPath, "Done")
 	}
 }
 
@@ -268,9 +287,9 @@ func TileTrimWorker(jobs <-chan string, results chan<- string, zoom int) {
 			if side == "right" || side == "bottom" {
 				toRemove = BBx(bbx.Extent(), bbx.Extent())
 			}
-			if side == "top" {
-				print("top")
-			}
+			// if side == "top" {
+			// 	print("top")
+			// }
 			isWhite := checkLine.isBBoxWhite(basepath, zoom)
 			for ; isWhite; isWhite = checkLine.isBBoxWhite(basepath, zoom) {
 				toRemove, _ = GetBBoxMerge(toRemove, checkLine)
@@ -290,6 +309,68 @@ func TileTrimWorker(jobs <-chan string, results chan<- string, zoom int) {
 			}
 		}
 		logMsg(results, job, "- Done")
+	}
+}
+
+func TilesetListWorker(jobs <-chan string, results chan<- string, workersDone *uint64, workerCount uint64) {
+	// defer wg.Done()
+	for job := range jobs {
+		dirWithZ := job
+		xList, err := ioutil.ReadDir(dirWithZ)
+		if err != nil {
+			log.Error().Err(err).Msgf("Could not read z dir: %v", dirWithZ)
+		} else {
+			// var tileList []string
+			for _, xDir := range xList {
+				if xDir.IsDir() {
+					tiles, err := ioutil.ReadDir(filepath.Join(dirWithZ, xDir.Name()))
+					if err != nil {
+						log.Error().Err(err).Msgf("Could not read x dir: %v", dirWithZ)
+					} else {
+						for _, tile := range tiles {
+							fname := tile.Name()
+							if filepath.Base(fname) != ".DS_Store" {
+								fullFilePath := filepath.Join(dirWithZ, xDir.Name(), fname)
+								// println("Adding file to results", fullFilePath)
+								results <- fullFilePath
+							}
+							// tileList = append(tileList, tile.Name())
+						}
+					}
+				}
+			}
+		}
+	}
+	atomic.AddUint64(workersDone, 1)
+	if atomic.LoadUint64(workersDone) == workerCount {
+		close(results)
+	}
+}
+
+func TilesetListWorker2(jobs <-chan string, results chan<- string, workersDone *uint64, workerCount uint64) {
+	// defer wg.Done()
+	for job := range jobs {
+		yList, err := ioutil.ReadDir(job)
+		if err != nil {
+			log.Error().Err(err).Msgf("Could not read z dir: %v", job)
+		} else {
+			// var tileList []string
+			for _, tile := range yList {
+				if !tile.IsDir() {
+					fname := tile.Name()
+					if filepath.Base(fname) != ".DS_Store" {
+						fullFilePath := filepath.Join(job, fname)
+						// println("Adding file to results", fullFilePath)
+						results <- fullFilePath
+					}
+
+				}
+			}
+		}
+	}
+	atomic.AddUint64(workersDone, 1)
+	if atomic.LoadUint64(workersDone) == workerCount {
+		close(results)
 	}
 }
 

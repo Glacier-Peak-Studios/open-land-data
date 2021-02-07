@@ -89,6 +89,83 @@ func WalkMatch(root string, pattern string) ([]string, error) {
 	return matches, nil
 }
 
+func GetAllTiles2(root string, workers int) []string {
+	dirsList, err := ioutil.ReadDir(root)
+	if err != nil {
+		log.Error().Err(err).Msg("Error reading sources list")
+	}
+
+	jobCount := len(dirsList)
+	jobs := make(chan string, jobCount)
+	filesRet := make(chan string, 200)
+
+	var workersDone uint64
+	workersTotal := uint64(workers)
+
+	var tileList []string
+
+	for i := 0; i < workers; i++ {
+		go TilesetListWorker2(jobs, filesRet, &workersDone, workersTotal)
+	}
+
+	for _, dir := range dirsList {
+		if dir.IsDir() {
+			jobs <- filepath.Join(root, dir.Name())
+		}
+	}
+	close(jobs)
+
+	for tileFile := range filesRet {
+		tileList = append(tileList, tileFile)
+	}
+
+	return tileList
+
+}
+
+func GetAllTiles(root string, workers int) (map[string][]string, []Tile) {
+	dirsList, err := ioutil.ReadDir(root)
+	if err != nil {
+		log.Error().Err(err).Msg("Error reading sources list")
+	}
+
+	jobCount := len(dirsList)
+	jobs := make(chan string, jobCount)
+	filesRet := make(chan string, 200)
+
+	var workersDone uint64
+	workersTotal := uint64(workers)
+
+	// var tileList []string
+
+	for i := 0; i < workers; i++ {
+		go TilesetListWorker(jobs, filesRet, &workersDone, workersTotal)
+	}
+
+	for _, dir := range dirsList {
+		if dir.IsDir() {
+			jobs <- filepath.Join(root, dir.Name(), "17")
+		}
+	}
+	close(jobs)
+
+	m := make(map[string][]string)
+	var tileList []Tile
+
+	for tileFile := range filesRet {
+		tile, base := PathToTile(tileFile)
+		tSources := m[tile.GetPathXY()]
+		if tSources == nil {
+			tileList = append(tileList, tile)
+		}
+		tSources = append(tSources, base)
+		m[tile.GetPathXY()] = tSources
+	}
+
+	return m, tileList
+
+}
+
 // CleanJob cleans up folders and .zip files in the target job's directory
 func CleanJob(job string) error {
 	outdir := strings.Replace(job, "land-sources", "generated", 1)
@@ -129,6 +206,10 @@ func BBoxFromTileset(path string) (BBox, error) {
 	x0ListY, err := ioutil.ReadDir(x0Path)
 	x1ListY, err := ioutil.ReadDir(x1Path)
 	if err != nil {
+		log.Error().Msg("Couldn't read source dir")
+		return ZeroBBox(), err
+	}
+	if len(x0ListY) == 0 || len(x1ListY) == 0 {
 		log.Error().Msg("Couldn't read source dir")
 		return ZeroBBox(), err
 	}

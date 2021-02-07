@@ -84,11 +84,18 @@ func GenerateOverviewTile(outName string, img1 string, img2 string, img3 string,
 	bgWidth, bgHeight := 512, 512
 	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
 	// draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{color.White}, image.ZP, draw.Src)
-
-	draw.Draw(bgImg, image.Rect(0, 0, 256, 256), imgs[0], image.ZP, draw.Over)
-	draw.Draw(bgImg, image.Rect(256, 0, 512, 256), imgs[1], image.ZP, draw.Over)
-	draw.Draw(bgImg, image.Rect(0, 256, 256, 512), imgs[2], image.ZP, draw.Over)
-	draw.Draw(bgImg, image.Rect(256, 256, 512, 512), imgs[3], image.ZP, draw.Over)
+	if imgs[0] != nil {
+		draw.Draw(bgImg, image.Rect(0, 0, 256, 256), imgs[0], image.ZP, draw.Over)
+	}
+	if imgs[1] != nil {
+		draw.Draw(bgImg, image.Rect(256, 0, 512, 256), imgs[1], image.ZP, draw.Over)
+	}
+	if imgs[2] != nil {
+		draw.Draw(bgImg, image.Rect(0, 256, 256, 512), imgs[2], image.ZP, draw.Over)
+	}
+	if imgs[3] != nil {
+		draw.Draw(bgImg, image.Rect(256, 256, 512, 512), imgs[3], image.ZP, draw.Over)
+	}
 
 	imgOut := resize.Resize(256, 256, bgImg, resize.NearestNeighbor)
 
@@ -320,10 +327,12 @@ func GetCoverageRectCorner(img image.Image, corner int) ([]image.Rectangle, erro
 			if !pixelIsTransparent(pxCol) {
 				xFound = true
 			}
+
 		}
-		if !xFound {
-			xIdx++
+		if xIdx == 256 {
+			xFound = true
 		}
+
 		for revIdx := yIdx; revIdx >= 0 && !yFound; revIdx-- {
 			x := xRng[xIdx]
 			y := yRng[revIdx]
@@ -332,11 +341,19 @@ func GetCoverageRectCorner(img image.Image, corner int) ([]image.Rectangle, erro
 				yFound = true
 			}
 		}
+		if yIdx == 256 {
+			yFound = true
+		}
+
+		if !xFound {
+			xIdx++
+		}
 		if !yFound {
 			yIdx++
 		}
 
 	}
+
 	rect1 := image.Rect(xRng[xIdx], yRng[0], xRng[len(xRng)-1], yRng[len(yRng)-1])
 	rect2 := image.Rect(xRng[0], yRng[yIdx], xRng[len(xRng)-1], yRng[len(yRng)-1])
 

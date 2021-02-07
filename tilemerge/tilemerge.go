@@ -60,17 +60,23 @@ func main() {
 }
 
 func MassTileMerge(setsDir string, out string, workers int) {
-	m := make(map[string][]string)
-	sources, _ := utils.WalkMatch(setsDir, "*.png")
-	var tileList []utils.Tile
+	// m := make(map[string][]string)
+	// sources, _ := utils.WalkMatch(setsDir, "*.png")
+	// sources, _ := utils.GetAllTiles(setsDir, workers)
+	// var tileList []utils.Tile
 
-	for _, source := range sources {
-		tile, base := utils.PathToTile(source)
-		tSources := m[tile.GetPathXY()]
-		tSources = append(tSources, base)
-		m[tile.GetPathXY()] = tSources
-		tileList = utils.AppendSetT(tileList, tile)
-	}
+	m, tileList := utils.GetAllTiles(setsDir, workers)
+
+	// for _, source := range sources {
+	// 	tile, base := utils.PathToTile(source)
+	// 	tSources := m[tile.GetPathXY()]
+	// 	tSources = append(tSources, base)
+	// 	m[tile.GetPathXY()] = tSources
+	// 	tileList = utils.AppendSetT(tileList, tile)
+	// }
+
+	// sources = nil
+	println("done")
 
 	jobCount := len(tileList)
 	jobs := make(chan utils.Tile, jobCount)

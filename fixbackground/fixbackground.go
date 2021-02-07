@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"path/filepath"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -55,13 +56,15 @@ func main() {
 
 func FixBackground(dir string, out string, workers int) {
 	m := make(map[string]bool)
-	sources, _ := utils.WalkMatch(dir, "*.png")
+	// sources, _ := utils.WalkMatch(dir, "*.png")
+	sources := utils.GetAllTiles2(filepath.Join(dir, "17"), workers)
 	var tileList []utils.Tile
 
 	for _, source := range sources {
 		tile, _ := utils.PathToTile(source)
 		m[tile.GetPathXY()] = true
-		tileList = utils.AppendSetT(tileList, tile)
+		tileList = append(tileList, tile)
+		// tileList = utils.AppendSetT(tileList, tile)
 	}
 
 	jobCount := len(tileList)

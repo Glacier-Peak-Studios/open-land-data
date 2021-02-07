@@ -63,10 +63,24 @@ func CreateOverviewRange(zMax int, zMin int, dir string, workers int) {
 
 func CreateOverview(dir string, workers int) {
 	log.Warn().Msgf("Searching sources dir: %v", dir)
-	sources, _ := utils.WalkMatch(dir, "*.png")
-	sources = utils.SetMap(sources, utils.OverviewRoot)
+	sources := utils.GetAllTiles2(dir, workers)
+	// sources, _ := utils.WalkMatch(dir, "*")
+	m := make(map[string]bool)
+	var overviews []string
 
-	jobCount := len(sources)
+	for _, source := range sources {
+		over := utils.OverviewRoot(source)
+		tile, _ := utils.PathToTile(over)
+		if !m[tile.GetPathXY()] {
+			overviews = append(overviews, over)
+			m[tile.GetPathXY()] = true
+		}
+
+		// tileList = utils.AppendSetT(tileList, tile)
+	}
+	// sources = utils.SetMap(sources, utils.OverviewRoot)
+
+	jobCount := len(overviews)
 	jobs := make(chan string, jobCount)
 	results := make(chan string, jobCount)
 
@@ -74,7 +88,7 @@ func CreateOverview(dir string, workers int) {
 	for i := 0; i < workers; i++ {
 		go utils.OverviewWorker(jobs, results)
 	}
-	queueSources(sources, jobs)
+	queueSources(overviews, jobs)
 
 	for i := 0; i < jobCount; i++ {
 		var rst = <-results
