@@ -97,6 +97,8 @@ func OverviewWorker(jobs <-chan string, results chan<- string) {
 			} else {
 				logMsg(results, imgOut, "Job done")
 			}
+		} else {
+			logMsg(results, imgOut, "Out img already exists, skipping. Done.")
 		}
 
 	}
