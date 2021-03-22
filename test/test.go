@@ -38,10 +38,16 @@ func main() {
 		break
 	}
 
+	jobs := make(chan string, 500)
+	filesRet := make(chan string, 500)
+
+	go utils.GetAllTiles3(*in, *workersOpt, jobs, filesRet)
+
 	println("Reading in all files from %v", *in)
-	fileList := utils.GetAllTiles2(*in, *workersOpt)
-	println("Got files, printing")
-	for _, file := range fileList {
+	// fileList := utils.WalkRecursive(*in, *workersOpt)
+	// fileList := utils.GetAllTiles2(*in, *workersOpt)
+	// println("Got files, printing")
+	for file := range filesRet {
 		println("-> file ->")
 		println(file)
 	}

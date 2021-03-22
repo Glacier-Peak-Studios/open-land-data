@@ -89,6 +89,29 @@ func WalkMatch(root string, pattern string) ([]string, error) {
 	return matches, nil
 }
 
+func WalkRecursive(root string, workers int) []string {
+	jobs := make(chan string, 500)
+	filesRet := make(chan string, 200)
+
+	var workersDone uint64
+	dirCount := uint64(1)
+	workersTotal := uint64(workers)
+
+	var tileList []string
+
+	for i := 0; i < workers; i++ {
+		go FileFinder(jobs, filesRet, &workersDone, workersTotal, &dirCount)
+	}
+
+	jobs <- root
+
+	for tileFile := range filesRet {
+		tileList = append(tileList, tileFile)
+	}
+
+	return tileList
+}
+
 func GetAllTiles2(root string, workers int) []string {
 	dirsList, err := ioutil.ReadDir(root)
 	if err != nil {
@@ -120,6 +143,48 @@ func GetAllTiles2(root string, workers int) []string {
 	}
 
 	return tileList
+
+}
+
+func GetAllTiles3(root string, workers int, jobs chan string, results chan<- string) {
+	dirsList, err := ioutil.ReadDir(root)
+	if err != nil {
+		log.Error().Err(err).Msg("Error reading sources list")
+	}
+
+	// jobCount := len(dirsList)
+	// jobs := make(chan string, 500)
+	// filesRet := make(chan string, 200)
+
+	var workersDone uint64
+	workersTotal := uint64(workers)
+
+	// var tileList []string
+
+	for i := 0; i < workers; i++ {
+		go TilesetListWorker2(jobs, results, &workersDone, workersTotal)
+	}
+
+	for _, dir := range dirsList {
+		if dir.IsDir() {
+			xlist, err := ioutil.ReadDir(filepath.Join(root, dir.Name()))
+			if err != nil {
+				log.Error().Err(err).Msg("Error reading sources list")
+			}
+			for _, x := range xlist {
+				if x.IsDir() {
+					jobs <- filepath.Join(root, dir.Name(), x.Name())
+				}
+			}
+		}
+	}
+	close(jobs)
+
+	// for tileFile := range filesRet {
+	// 	tileList = append(tileList, tileFile)
+	// }
+
+	// return tileList
 
 }
 
@@ -227,8 +292,8 @@ func CleanBBoxEdge(b BBox, side string, basepath string, zoom int) {
 	sideNum := SideToNum(side)
 	for ix := b.Origin().X; ix <= b.Extent().X; ix++ {
 		for iy := b.Origin().Y; iy <= b.Extent().Y; iy++ {
-			tile := Tile{x: ix, y: iy, z: zoom}
-			imgFile := filepath.Join(basepath, tile.getPath()+".png")
+			tile := Tile{X: ix, Y: iy, Z: zoom}
+			imgFile := filepath.Join(basepath, tile.GetPath()+".png")
 			CleanTileEdge(imgFile, sideNum)
 			// err = os.Remove(imgFile)
 		}
@@ -258,8 +323,8 @@ func removeTilesInBBox(b BBox, basepath string, z int) error {
 	var err error = nil
 	for ix := b.Origin().X; ix <= b.Extent().X; ix++ {
 		for iy := b.Origin().Y; iy <= b.Extent().Y; iy++ {
-			tile := Tile{x: ix, y: iy, z: z}
-			imgFile := filepath.Join(basepath, tile.getPath()+".png")
+			tile := Tile{X: ix, Y: iy, Z: z}
+			imgFile := filepath.Join(basepath, tile.GetPath()+".png")
 			err = os.Remove(imgFile)
 			if err != nil {
 				log.Error().Err(err).Msg("Failed to remove file")

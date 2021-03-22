@@ -9,60 +9,60 @@ import (
 )
 
 type Tile struct {
-	x int
-	y int
-	z int
+	X int
+	Y int
+	Z int
 }
 
 func MakeTile(x int, y int, z int) Tile {
-	return Tile{x: x, y: y, z: z}
+	return Tile{X: x, Y: y, Z: z}
 }
 
-func (t *Tile) getPath() string {
-	xStr := strconv.Itoa(t.x)
-	yStr := strconv.Itoa(t.y)
-	zStr := strconv.Itoa(t.z)
+func (t *Tile) GetPath() string {
+	xStr := strconv.Itoa(t.X)
+	yStr := strconv.Itoa(t.Y)
+	zStr := strconv.Itoa(t.Z)
 	return filepath.Join(zStr, xStr, yStr)
 }
 
 func (t *Tile) getPathZX() string {
-	xStr := strconv.Itoa(t.x)
-	zStr := strconv.Itoa(t.z)
+	xStr := strconv.Itoa(t.X)
+	zStr := strconv.Itoa(t.Z)
 	return filepath.Join(zStr, xStr)
 }
 
 func (t *Tile) GetPathXY() string {
-	xStr := strconv.Itoa(t.x)
-	yStr := strconv.Itoa(t.y)
+	xStr := strconv.Itoa(t.X)
+	yStr := strconv.Itoa(t.Y)
 	return filepath.Join(xStr, yStr)
 }
 
 func (t *Tile) leftTile() Tile {
-	return Tile{x: t.x - 1, y: t.y, z: t.z}
+	return Tile{X: t.X - 1, Y: t.Y, Z: t.Z}
 }
 
 func (t *Tile) rightTile() Tile {
-	return Tile{x: t.x + 1, y: t.y, z: t.z}
+	return Tile{X: t.X + 1, Y: t.Y, Z: t.Z}
 }
 
 func (t *Tile) upTile() Tile {
-	return Tile{x: t.x, y: t.y - 1, z: t.z}
+	return Tile{X: t.X, Y: t.Y - 1, Z: t.Z}
 }
 
 func (t *Tile) downTile() Tile {
-	return Tile{x: t.x, y: t.y + 1, z: t.z}
+	return Tile{X: t.X, Y: t.Y + 1, Z: t.Z}
 }
 
 func (t *Tile) overviewTile() Tile {
-	return Tile{x: t.x / 2, y: t.y / 2, z: t.z - 1}
+	return Tile{X: t.X / 2, Y: t.Y / 2, Z: t.Z - 1}
 }
 
 func (t *Tile) xyPoint() Point {
-	return Point{X: t.x, Y: t.y}
+	return Point{X: t.X, Y: t.Y}
 }
 
 func (t *Tile) xyzPoint() Point3 {
-	return Point3{X: t.x, Y: t.y, Z: t.z}
+	return Point3{X: t.X, Y: t.Y, Z: t.Z}
 }
 
 func PathToTile(path string) (Tile, string) {
@@ -82,7 +82,7 @@ func PathToTile(path string) (Tile, string) {
 		log.Debug().Err(err).Msg("")
 	}
 
-	retT := Tile{x: x, y: y, z: z}
+	retT := Tile{X: x, Y: y, Z: z}
 
 	return retT, basepath
 }
@@ -218,8 +218,8 @@ func (b *BBox) getSideLine(side string) BBox {
 func (b *BBox) isBBoxWhite(basepath string, z int) bool {
 	for ix := b.Origin().X; ix <= b.Extent().X; ix++ {
 		for iy := b.Origin().Y; iy <= b.Extent().Y; iy++ {
-			tile := Tile{x: ix, y: iy, z: z}
-			imgFile := filepath.Join(basepath, tile.getPath()+".png")
+			tile := Tile{X: ix, Y: iy, Z: z}
+			imgFile := filepath.Join(basepath, tile.GetPath()+".png")
 			if !canDeleteImg(imgFile) {
 				return false
 			}

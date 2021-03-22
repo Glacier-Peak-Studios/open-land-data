@@ -96,8 +96,8 @@ func tileInSlice(a Tile, list []Tile) bool {
 func OverviewRoot(path string) string {
 	tile, basepath := PathToTile(path)
 	up := tile.overviewTile()
-	root := MakeTile(up.x*2, up.y*2, up.z+1)
-	return filepath.Join(basepath, root.getPath())
+	root := MakeTile(up.X*2, up.Y*2, up.Z+1)
+	return filepath.Join(basepath, root.GetPath())
 
 }
 

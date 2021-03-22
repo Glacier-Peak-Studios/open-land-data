@@ -77,16 +77,16 @@ func OverviewWorker(jobs <-chan string, results chan<- string) {
 
 		curTile, basepath := PathToTile(job)
 
-		img1 := filepath.Join(basepath, curTile.getPath())
+		img1 := filepath.Join(basepath, curTile.GetPath())
 		tRight := curTile.rightTile()
-		img2 := filepath.Join(basepath, tRight.getPath())
+		img2 := filepath.Join(basepath, tRight.GetPath())
 		tDown := curTile.downTile()
-		img3 := filepath.Join(basepath, tDown.getPath())
+		img3 := filepath.Join(basepath, tDown.GetPath())
 		tDiag := tRight.downTile()
-		img4 := filepath.Join(basepath, tDiag.getPath())
+		img4 := filepath.Join(basepath, tDiag.GetPath())
 
 		tOver := curTile.overviewTile()
-		imgOut := filepath.Join(basepath, tOver.getPath())
+		imgOut := filepath.Join(basepath, tOver.GetPath())
 
 		if !fileExists(imgOut) {
 
@@ -108,8 +108,8 @@ func TilesetMergeWorker(jobs <-chan string, results chan<- string, ts1Dir string
 	for job := range jobs {
 		curTile, _ := PathToTile(job)
 		outImg := job
-		ts1File := ts1Dir + "/" + curTile.getPath() + ".png"
-		ts2File := ts2Dir + "/" + curTile.getPath() + ".png"
+		ts1File := ts1Dir + "/" + curTile.GetPath() + ".png"
+		ts2File := ts2Dir + "/" + curTile.GetPath() + ".png"
 		os.MkdirAll(filepath.Dir(outImg), 0755)
 
 		ts1Ex := fileExists(ts1File)
@@ -136,7 +136,7 @@ func TilesetMergeWorker(jobs <-chan string, results chan<- string, ts1Dir string
 func TilesetMergeWorker2(jobs <-chan Tile, results chan<- string, locations map[string][]string, outDir string) {
 	for job := range jobs {
 		curTile := job
-		outImg := filepath.Join(outDir, curTile.getPath()) + ".png"
+		outImg := filepath.Join(outDir, curTile.GetPath()) + ".png"
 		if !fileExists(outImg) {
 
 			os.MkdirAll(filepath.Dir(outImg), 0755)
@@ -169,8 +169,8 @@ func TilesetMergeWorker2(jobs <-chan Tile, results chan<- string, locations map[
 func FixBackgroundWorker(jobs <-chan Tile, results chan<- string, validTiles map[string]bool, inDir string, outDir string) {
 	for job := range jobs {
 		curTile := job
-		imgInPath := filepath.Join(inDir, curTile.getPath()+".png")
-		imgOutPath := filepath.Join(outDir, curTile.getPath())
+		imgInPath := filepath.Join(inDir, curTile.GetPath()+".png")
+		imgOutPath := filepath.Join(outDir, curTile.GetPath())
 		if !fileExists(imgOutPath) {
 			os.MkdirAll(filepath.Dir(imgOutPath), 0755)
 
@@ -181,7 +181,7 @@ func FixBackgroundWorker(jobs <-chan Tile, results chan<- string, validTiles map
 			}
 			for x := -1; x < 2; x++ {
 				for y := -1; y < 2; y++ {
-					tmpTile := MakeTile(curTile.x+x, curTile.y+y, curTile.z)
+					tmpTile := MakeTile(curTile.X+x, curTile.Y+y, curTile.Z)
 					surround[y+1][x+1] = validTiles[tmpTile.GetPathXY()]
 				}
 			}
@@ -267,7 +267,7 @@ func coordToCornerNum(x, y int) int {
 }
 
 func appendTileToBase(base string, tile Tile) string {
-	return filepath.Join(base, tile.getPath())
+	return filepath.Join(base, tile.GetPath())
 }
 
 func TileTrimWorker(jobs <-chan string, results chan<- string, zoom int) {
@@ -349,6 +349,71 @@ func TilesetListWorker(jobs <-chan string, results chan<- string, workersDone *u
 	}
 }
 
+func FileFinder(jobs chan string, results chan<- string, workersDone *uint64, workerCount uint64, foldersToRead *uint64) {
+	// defer wg.Done()
+	for atomic.LoadUint64(foldersToRead) != 0 || len(jobs) != 0 {
+		job, _ := <-jobs
+		dirListing, err := ioutil.ReadDir(job)
+		// println("DirLength:", len(dirListing))
+		if err != nil {
+			log.Error().Err(err).Msgf("Could not read z dir: %v", job)
+		} else {
+			newDirs := 0
+			for _, listing := range dirListing {
+				if listing.IsDir() {
+					newDirs++
+					jobs <- filepath.Join(job, listing.Name())
+					// println("DIR LISTING:", listing.Name())
+				} else {
+					results <- filepath.Join(job, listing.Name())
+					// println("FILE LISTING:", listing.Name())
+				}
+			}
+			// println("adding to dirCount:", newDirs)
+			atomic.AddUint64(foldersToRead, uint64(newDirs))
+			dcCur := atomic.LoadUint64(foldersToRead)
+			if dcCur != uint64(0) {
+				// println("removing from dirCount")
+				atomic.AddUint64(foldersToRead, ^uint64(0))
+			}
+
+		}
+		// dcCur := atomic.LoadUint64(foldersToRead)
+		// println("dirCount is now:", dcCur)
+	}
+	close(jobs)
+	atomic.AddUint64(workersDone, ^uint64(0))
+	if atomic.LoadUint64(workersDone) == 0 {
+		close(results)
+	}
+
+	// for job := range jobs {
+
+	// 	dirListing, err := ioutil.ReadDir(job)
+	// 	if err != nil {
+	// 		log.Error().Err(err).Msgf("Could not read z dir: %v", job)
+	// 	} else {
+	// 		for _, listing := range dirListing {
+	// 			if listing.IsDir() {
+	// 				atomic.AddUint64(workersDone, ^uint64(0))
+
+	// 			} else {
+	// 				go FileFinder()
+	// 			}
+	// 		}
+	// 	}
+
+	// }
+	// atomic.AddUint64(workersDone, ^uint64(0))
+	// if atomic.LoadUint64(workersDone) == 0 {
+	// 	close(results)
+	// }
+}
+
+func fileFinderRecurse(dir string, results chan<- string, workersDone *uint64) {
+
+}
+
 func TilesetListWorker2(jobs <-chan string, results chan<- string, workersDone *uint64, workerCount uint64) {
 	// defer wg.Done()
 	for job := range jobs {
@@ -409,7 +474,7 @@ func VectorMergeWorker(jobs <-chan string, results chan<- string) {
 		// 	os.Rename(baseImg, job)
 		// }
 
-		vecturl := fmt.Sprintf("%v/%v/%v/%v", fstopoArc, curTile.z, curTile.y, curTile.x)
+		vecturl := fmt.Sprintf("%v/%v/%v/%v", fstopoArc, curTile.Z, curTile.Y, curTile.X)
 		// println(vecturl)
 
 		topoDownloaded := true
@@ -423,7 +488,7 @@ func VectorMergeWorker(jobs <-chan string, results chan<- string) {
 				topoDownloaded = false
 				os.Link(baseImg, outImg)
 			} else {
-				dlTopo := dlTopoFolder + "/" + strconv.Itoa(curTile.x)
+				dlTopo := dlTopoFolder + "/" + strconv.Itoa(curTile.X)
 				os.Rename(dlTopo, topoImg)
 				os.Remove(dlTopoFolder)
 			}
