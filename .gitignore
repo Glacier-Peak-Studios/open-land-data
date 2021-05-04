@@ -110,3 +110,6 @@ main
 failures.txt
 runlog.txt
 runlog2.txt
+
+# Filesystem Garbage
+.DS_Store
