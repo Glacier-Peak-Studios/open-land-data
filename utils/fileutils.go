@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -317,6 +318,15 @@ func GetGeoPDFLayers(file string) []string {
 	}
 	// println(lines)
 	return layers
+}
+
+func ReadInFilterList(file string) []string {
+	dat, err := ioutil.ReadFile(file)
+	if (err != nil) {
+		fmt.Print(err)
+	}
+  return strings.Fields(string(dat))
+	// return {""}
 }
 
 func removeTilesInBBox(b BBox, basepath string, z int) error {

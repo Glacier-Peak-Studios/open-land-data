@@ -16,6 +16,7 @@ func main() {
 	workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
 	outDir := flag.String("o", "./", "Folder to output the tiff files")
 	inDir := flag.String("i", "./", "Folder with the pdf files")
+	filterFile := flag.String("f", "./keepLayers.txt", "File containing layers to include when converting")
 	dpi := flag.String("dpi", "750", "DPI of the output tiffs")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
 		" 0 - Only prints error messages\n"+
@@ -52,13 +53,16 @@ func main() {
 	jobs := make(chan string, jobCount)
 	results := make(chan string, jobCount)
 
+	filterLayers := utils.ReadInFilterList(*filterFile)
+
 	// rmlayers := "\"" + utils.FtoStr("rmlayers.txt") + "\""
 
 	log.Warn().Msgf("Running with %v workers", *workersOpt)
+	
 	// defArgs := {"GPWestFSTopo.pdf -D 750 -r \"$(cat rmlayers.txt)\" -t EPSG:3857"}
 	for i := 0; i < *workersOpt; i++ {
 		// go utils.CommandRunner(jobs, results, "./convert-geopdf.py", "-D", "750", "-r", "\"$(cat rmlayers.txt)\"", "-t", "EPSG:3857")
-		go utils.PDF2TiffWorker(jobs, results, *outDir, "gdalwarp", "-co", "TILED=YES", "-co", "TFW=YES", "-t_srs", "EPSG:3857", "-r", "near", "-overwrite", "-dstnodata", "255", "--config", "GDAL_PDF_DPI", *dpi)
+		go utils.PDF2TiffWorker(jobs, results, filterLayers, *outDir, "gdalwarp", "-co", "TILED=YES", "-co", "TFW=YES", "-t_srs", "EPSG:3857", "-r", "near", "-overwrite", "-dstnodata", "255", "--config", "GDAL_PDF_DPI", *dpi)
 	}
 	queueSources(sources, jobs)
 

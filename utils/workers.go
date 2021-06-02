@@ -13,15 +13,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func PDF2TiffWorker(jobs <-chan string, results chan<- string, outDir string, cmd string, constArgs ...string) {
+func PDF2TiffWorker(jobs <-chan string, results chan<- string, filterList []string, outDir string, cmd string, constArgs ...string) {
 	for job := range jobs {
 		// jobSplit := strings.Split(job, " ")
 		println("-> Job -", job)
 		pdfLayers := GetGeoPDFLayers(job)
 
-		pdfLayers = Filter(pdfLayers, RemoveLayer)
+
+		pdfLayers = Filter2(pdfLayers, filterList, LayerFilter)
 		rmLayers := strings.Join(pdfLayers[:], ",")
-		args := append(constArgs, "--config", "GDAL_PDF_LAYERS_OFF", rmLayers)
+		args := append(constArgs, "--config", "GDAL_PDF_LAYERS", rmLayers)
 
 		fout := filepath.Join(outDir, StripExt(job)+".tif")
 		args = append(args, job, fout)
@@ -41,34 +42,41 @@ func PDF2TiffWorker(jobs <-chan string, results chan<- string, outDir string, cm
 
 }
 
-func LayerFilter(layer string) bool {
-	if strings.HasPrefix(layer, "Quadrangle.Neatline") {
-		return false
+func LayerFilter(layer string, filterList []string) bool {
+	for _, filt := range filterList {
+		if strings.HasPrefix(layer, filt) {
+			return true
+		}
 	}
-	if strings.HasPrefix(layer, "Quadrangle.2_5") {
-		return false
-	}
-	if strings.HasPrefix(layer, "Quadrangle_Ext") {
-		return false
-	}
-	if strings.HasPrefix(layer, "Adjacent") {
-		return false
-	}
-	if strings.HasPrefix(layer, "Other") {
-		return false
-	}
-	if strings.HasPrefix(layer, "Quadrangle.UTM") {
-		return false
-	}
-	if strings.HasPrefix(layer, "Ownership") {
-		return false
-	}
+	return false
 
-	return true
+	// if strings.HasPrefix(layer, "Quadrangle.Neatline") {
+	// 	return false
+	// }
+	// if strings.HasPrefix(layer, "Quadrangle.2_5") {
+	// 	return false
+	// }
+	// if strings.HasPrefix(layer, "Quadrangle_Ext") {
+	// 	return false
+	// }
+	// if strings.HasPrefix(layer, "Adjacent") {
+	// 	return false
+	// }
+	// if strings.HasPrefix(layer, "Other") {
+	// 	return false
+	// }
+	// if strings.HasPrefix(layer, "Quadrangle.UTM") {
+	// 	return false
+	// }
+	// if strings.HasPrefix(layer, "Ownership") {
+	// 	return false
+	// }
+
+	// return true
 }
 
-func RemoveLayer(layer string) bool {
-	return !LayerFilter(layer)
+func RemoveLayer(layer string, filterList []string) bool {
+	return !LayerFilter(layer, filterList)
 }
 
 func OverviewWorker(jobs <-chan string, results chan<- string) {

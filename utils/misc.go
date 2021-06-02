@@ -29,6 +29,16 @@ func Filter(vs []string, f func(string) bool) []string {
 	return vsf
 }
 
+func Filter2(vs []string, filt []string, f func(string, []string) bool) []string {
+	vsf := make([]string, 0)
+	for _, v := range vs {
+		if f(v,  filt) {
+			vsf = append(vsf, v)
+		}
+	}
+	return vsf
+}
+
 func FilterFI(vs []os.FileInfo, f func(os.FileInfo) bool) []os.FileInfo {
 	vsf := make([]os.FileInfo, 0)
 	for _, v := range vs {
