@@ -196,8 +196,9 @@ func GetAllTiles(root string, workers int) (map[string][]string, []Tile) {
 	}
 
 	jobCount := len(dirsList)
+	log.Debug().Msgf("Making job channel of length %v", jobCount)
 	jobs := make(chan string, jobCount)
-	filesRet := make(chan string, 200)
+	filesRet := make(chan string, 30)
 
 	var workersDone uint64
 	workersTotal := uint64(workers)
@@ -213,19 +214,82 @@ func GetAllTiles(root string, workers int) (map[string][]string, []Tile) {
 			jobs <- filepath.Join(root, dir.Name(), "17")
 		}
 	}
+	log.Debug().Msg("Done queing folder list, closing channel")
 	close(jobs)
 
 	m := make(map[string][]string)
+	// m := make(map[int][]string)
 	var tileList []Tile
 
 	for tileFile := range filesRet {
 		tile, base := PathToTile(tileFile)
-		tSources := m[tile.GetPathXY()]
+		tileXY := tile.GetPathXY()
+		// tXYInt := tile.GetXYInt()
+		tSources := m[tileXY]
+		// tSources := m[tXYInt]
 		if tSources == nil {
 			tileList = append(tileList, tile)
+			lenTL := len(tileList)
+			if lenTL % 10000000 == 0 {
+				log.Debug().Msgf("Length of tileList is now %v", lenTL)
+			}
 		}
 		tSources = append(tSources, base)
-		m[tile.GetPathXY()] = tSources
+		m[tileXY] = tSources
+		// m[tXYInt] = tSources
+		lenMap := len(m)
+		if lenMap % 100000 == 0 {
+			log.Debug().Msgf("Length of map is now %v", lenMap)
+		}
+	}
+
+	return m, tileList
+
+}
+
+func GetAllTiles0(root string, zLvl string, workers int) (map[int][]string, []Tile) {
+	dirsList, err := ioutil.ReadDir(root)
+	if err != nil {
+		log.Error().Err(err).Msg("Error reading sources list")
+	}
+
+	jobCount := len(dirsList)
+	log.Debug().Msgf("Making job channel of length %v", jobCount)
+	jobs := make(chan string, jobCount)
+	filesRet := make(chan string, 30)
+
+	var workersDone uint64
+	workersTotal := uint64(workers)
+
+	for i := 0; i < workers; i++ {
+		go TilesetListWorker(jobs, filesRet, &workersDone, workersTotal)
+	}
+
+	for _, dir := range dirsList {
+		if dir.IsDir() {
+			jobs <- filepath.Join(root, dir.Name(), zLvl)
+		}
+	}
+	log.Debug().Msg("Done queing folder list, closing channel")
+	close(jobs)
+
+	m := make(map[int][]string)
+	var tileList []Tile
+
+	for tileFile := range filesRet {
+		tile, base := PathToTile(tileFile)
+		savedBase := strings.ReplaceAll(base, root, "")
+		tXYInt := tile.GetXYInt()
+		tSources := m[tXYInt]
+		if tSources == nil {
+			tileList = append(tileList, tile)
+			lenTL := len(tileList)
+			if lenTL % 10000000 == 0 {
+				log.Debug().Msgf("Number of tiles is now %v", lenTL)
+			}
+		}
+		tSources = append(tSources, savedBase)
+		m[tXYInt] = tSources
 	}
 
 	return m, tileList

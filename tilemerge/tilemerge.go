@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -23,6 +24,7 @@ func main() {
 	src2 := flag.String("src2", "/Users/solidsilver/Code/USFS/TilemergeTest/GPWestFSTopo", "The root directory of the source files")
 	massMerge := flag.Bool("m", false, "Merge all tilesets in a given directory (ignores -src2 flag)")
 	outDir := flag.String("o", "/Users/solidsilver/Code/USFS/TilemergeTest/GPTilemerge", "The root directory of the source files")
+	zLevel := flag.String("z", "17", "Z level of tiles to process")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
 		" 0 - Only prints error messages\n"+
 		" 1 - Adds run specs and error details\n"+
@@ -52,49 +54,66 @@ func main() {
 	}
 
 	if *massMerge {
-		MassTileMerge(*src1, *outDir, *workersOpt)
+		MassTileMerge(*src1, *outDir, *zLevel, *workersOpt)
 	} else {
 		TileMerge(*src1, *src2, *outDir, *workersOpt)
 	}
 
 }
 
-func MassTileMerge(setsDir string, out string, workers int) {
+func MassTileMerge(setsDir string, out string, zLevel string, workers int) {
 	// m := make(map[string][]string)
 	// sources, _ := utils.WalkMatch(setsDir, "*.png")
 	// sources, _ := utils.GetAllTiles(setsDir, workers)
 	// var tileList []utils.Tile
 
-	m, tileList := utils.GetAllTiles(setsDir, workers)
+	log.Warn().Msg("Gathering list of tiles to merge")
+	// m, tileList := utils.GetAllTiles(setsDir, workers)
+	m, tileList := utils.GetAllTiles0(setsDir, zLevel, workers)
 
-	// for _, source := range sources {
-	// 	tile, base := utils.PathToTile(source)
-	// 	tSources := m[tile.GetPathXY()]
-	// 	tSources = append(tSources, base)
-	// 	m[tile.GetPathXY()] = tSources
-	// 	tileList = utils.AppendSetT(tileList, tile)
-	// }
+	log.Warn().Msg("Done gathering tiles.")
+
 
 	// sources = nil
-	println("done")
+	// println("done")
 
-	jobCount := len(tileList)
+	// jobCount := len(tileList)
+	rsltLen := len(tileList)
+	log.Warn().Msgf("Processing %v tiles", rsltLen)
+	jobCount := 32
 	jobs := make(chan utils.Tile, jobCount)
 	results := make(chan string, jobCount)
+	readChan := make(chan int, 1)
 
+	go resultReaderWorker(results, jobs, rsltLen, readChan)
+
+	mapLock := sync.RWMutex{}
+
+	// log.Debug().Msg("Going to merge tiles")
 	log.Warn().Msgf("Running with %v workers", workers)
 	for i := 0; i < workers; i++ {
-		go utils.TilesetMergeWorker2(jobs, results, m, out)
+		// go utils.TilesetMergeWorker2(jobs, results, m, out)
+		go utils.TilesetMergeWorker0(jobs, results, m, out, setsDir, &mapLock)
 	}
 	for _, tile := range tileList {
 		jobs <- tile
 	}
-	for i := 0; i < jobCount; i++ {
-		var rst = <-results
-		log.Debug().Msg(rst)
+
+	<-readChan
+
+	log.Warn().Msg("Done with all jobs")
+
+}
+
+
+func resultReaderWorker(toRead <-chan string, jobs chan utils.Tile, resultCount int, result chan<- int) {
+	for i := 0; i < resultCount; i++ {
+		<-toRead
+		// var rst = <-toRead
+		// log.Debug().Msg(rst)
 	}
 	close(jobs)
-	log.Warn().Msg("Done with all jobs")
+	result <- 1
 
 }
 

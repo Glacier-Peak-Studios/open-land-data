@@ -4,6 +4,7 @@ import (
 	"errors"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 )
@@ -35,6 +36,22 @@ func (t *Tile) GetPathXY() string {
 	xStr := strconv.Itoa(t.X)
 	yStr := strconv.Itoa(t.Y)
 	return filepath.Join(xStr, yStr)
+}
+
+func (t *Tile) GetXYString() string {
+	// xStr := strconv.Itoa(t.X)
+	// yStr := strconv.Itoa(t.Y)
+	toJoin := []string{strconv.Itoa(t.X), strconv.Itoa(t.Y)}
+	return strings.Join(toJoin, "")
+}
+
+func (t *Tile) GetXYInt() int {
+	// xStr := strconv.Itoa(t.X)
+	// yStr := strconv.Itoa(t.Y)
+	toJoin := []string{strconv.Itoa(t.X), strconv.Itoa(t.Y)}
+	i, _ := strconv.Atoi(strings.Join(toJoin, ""))
+
+	return i
 }
 
 func (t *Tile) leftTile() Tile {

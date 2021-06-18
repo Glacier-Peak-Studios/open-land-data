@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/rs/zerolog/log"
@@ -174,6 +175,47 @@ func TilesetMergeWorker2(jobs <-chan Tile, results chan<- string, locations map[
 	}
 }
 
+func TilesetMergeWorker0(jobs <-chan Tile, results chan<- string, locations map[int][]string, outDir string, inDir string, mapLock *sync.RWMutex) {
+	for job := range jobs {
+		curTile := job
+		outImg := filepath.Join(outDir, curTile.GetPath()) + ".png"
+		if !fileExists(outImg) {
+
+			os.MkdirAll(filepath.Dir(outImg), 0755)
+
+			tileKey := curTile.GetXYInt()
+			mapLock.Lock()
+			tileLocs := locations[tileKey]
+			delete(locations, tileKey)
+			mapLock.Unlock()
+
+			// vsf := make([]string, 0)
+			// for _, v := range tileLocs {
+			// 	base := inDir + v
+			// 	vF := appendTileToBase(base, curTile) + ".png"
+			// 	vsf = append(vsf, vF)
+			// }
+			// tileLocs = vsf
+
+			var err error = nil
+			
+			if len(tileLocs) > 1 {
+				err = MergeNTiles0(tileLocs, curTile, inDir, outImg)
+			} else if len(tileLocs) == 1 {
+				base := inDir + tileLocs[0]
+				imgPathWBase := appendTileToBase(base, curTile) + ".png"
+				err = os.Link(imgPathWBase, outImg)
+			}
+			if err != nil {
+				log.Error().Err(err).Msgf("Error creating output tile: %v", outImg)
+			}
+			logMsg(results, outImg, "Done.")
+		} else {
+			logMsg(results, outImg, "Already exists, done.")
+		}
+	}
+}
+
 func FixBackgroundWorker(jobs <-chan Tile, results chan<- string, validTiles map[string]bool, inDir string, outDir string) {
 	for job := range jobs {
 		curTile := job
@@ -325,23 +367,23 @@ func TileTrimWorker(jobs <-chan string, results chan<- string, zoom int) {
 func TilesetListWorker(jobs <-chan string, results chan<- string, workersDone *uint64, workerCount uint64) {
 	// defer wg.Done()
 	for job := range jobs {
-		dirWithZ := job
-		xList, err := ioutil.ReadDir(dirWithZ)
+		// dirWithZ := job
+		xList, err := ioutil.ReadDir(job)
 		if err != nil {
-			log.Error().Err(err).Msgf("Could not read z dir: %v", dirWithZ)
+			log.Error().Err(err).Msgf("Could not read z dir: %v", job)
 		} else {
 			// var tileList []string
 			for _, xDir := range xList {
 				if xDir.IsDir() {
-					tiles, err := ioutil.ReadDir(filepath.Join(dirWithZ, xDir.Name()))
+					tiles, err := ioutil.ReadDir(filepath.Join(job, xDir.Name()))
 					if err != nil {
-						log.Error().Err(err).Msgf("Could not read x dir: %v", dirWithZ)
+						log.Error().Err(err).Msgf("Could not read x dir: %v", job)
 					} else {
 						for _, tile := range tiles {
 							fname := tile.Name()
 							if filepath.Base(fname) != ".DS_Store" {
-								fullFilePath := filepath.Join(dirWithZ, xDir.Name(), fname)
-								// println("Adding file to results", fullFilePath)
+								fullFilePath := filepath.Join(job, xDir.Name(), fname)
+								// log.Debug().Msgf("Adding file to results: %v", fullFilePath)
 								results <- fullFilePath
 							}
 							// tileList = append(tileList, tile.Name())
