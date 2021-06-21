@@ -464,21 +464,21 @@ func fileFinderRecurse(dir string, results chan<- string, workersDone *uint64) {
 
 }
 
-func TilesetListWorker2(jobs <-chan string, results chan<- string, workersDone *uint64, workerCount uint64) {
+func TilesetListWorkerStreamed(searchDirs <-chan string, filesFound chan<- string, workersDone *uint64, workerCount uint64) {
 	// defer wg.Done()
-	for job := range jobs {
-		yList, err := ioutil.ReadDir(job)
+	for dir := range searchDirs {
+		yList, err := ioutil.ReadDir(dir)
 		if err != nil {
-			log.Error().Err(err).Msgf("Could not read z dir: %v", job)
+			log.Error().Err(err).Msgf("Could not read z dir: %v", dir)
 		} else {
 			// var tileList []string
 			for _, tile := range yList {
 				if !tile.IsDir() {
 					fname := tile.Name()
 					if filepath.Base(fname) != ".DS_Store" {
-						fullFilePath := filepath.Join(job, fname)
+						fullFilePath := filepath.Join(dir, fname)
 						// println("Adding file to results", fullFilePath)
-						results <- fullFilePath
+						filesFound <- fullFilePath
 					}
 
 				}
@@ -487,7 +487,7 @@ func TilesetListWorker2(jobs <-chan string, results chan<- string, workersDone *
 	}
 	atomic.AddUint64(workersDone, 1)
 	if atomic.LoadUint64(workersDone) == workerCount {
-		close(results)
+		close(filesFound)
 	}
 }
 

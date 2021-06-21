@@ -3,6 +3,8 @@ package utils
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/schollz/progressbar/v3"
 )
 
 func Min(x, y int) int {
@@ -139,4 +141,21 @@ func AbsInt(val int) int {
 	}
 	return val
 
+}
+
+
+
+func GetProgressStyle(max int, optsDesc string) *progressbar.ProgressBar {
+	gatherTilesBar := progressbar.NewOptions(max,
+    progressbar.OptionEnableColorCodes(true),
+    progressbar.OptionSetDescription(optsDesc),
+    progressbar.OptionSetTheme(progressbar.Theme{
+        Saucer:        "[blue]=[reset]",
+        SaucerHead:    "[blue]>[reset]",
+        SaucerPadding: " ",
+        BarStart:      "[",
+        BarEnd:        "]",
+    }))
+
+	return gatherTilesBar 
 }

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	"github.com/schollz/progressbar/v3"
 )
 
 func fileExists(filename string) bool {
@@ -129,7 +130,7 @@ func GetAllTiles2(root string, workers int) []string {
 	var tileList []string
 
 	for i := 0; i < workers; i++ {
-		go TilesetListWorker2(jobs, filesRet, &workersDone, workersTotal)
+		go TilesetListWorkerStreamed(jobs, filesRet, &workersDone, workersTotal)
 	}
 
 	for _, dir := range dirsList {
@@ -147,23 +148,22 @@ func GetAllTiles2(root string, workers int) []string {
 
 }
 
-func GetAllTiles3(root string, workers int, jobs chan string, results chan<- string) {
+func GetAllTilesStreamed(root string, workerCount int, foundTiles chan<- string) {
 	dirsList, err := ioutil.ReadDir(root)
 	if err != nil {
 		log.Error().Err(err).Msg("Error reading sources list")
 	}
 
-	// jobCount := len(dirsList)
-	// jobs := make(chan string, 500)
+	searchDirs := make(chan string, 500)
 	// filesRet := make(chan string, 200)
 
 	var workersDone uint64
-	workersTotal := uint64(workers)
+	workersTotal := uint64(workerCount)
 
 	// var tileList []string
 
-	for i := 0; i < workers; i++ {
-		go TilesetListWorker2(jobs, results, &workersDone, workersTotal)
+	for i := 0; i < workerCount; i++ {
+		go TilesetListWorkerStreamed(searchDirs, foundTiles, &workersDone, workersTotal)
 	}
 
 	for _, dir := range dirsList {
@@ -174,12 +174,12 @@ func GetAllTiles3(root string, workers int, jobs chan string, results chan<- str
 			}
 			for _, x := range xlist {
 				if x.IsDir() {
-					jobs <- filepath.Join(root, dir.Name(), x.Name())
+					searchDirs <- filepath.Join(root, dir.Name(), x.Name())
 				}
 			}
 		}
 	}
-	close(jobs)
+	close(searchDirs)
 
 	// for tileFile := range filesRet {
 	// 	tileList = append(tileList, tileFile)
@@ -252,6 +252,15 @@ func GetAllTiles0(root string, zLvl string, workers int) (map[int][]string, []Ti
 	if err != nil {
 		log.Error().Err(err).Msg("Error reading sources list")
 	}
+	gatherTilesBar := progressbar.NewOptions(-1, 
+		progressbar.OptionSetDescription("Gathering tiles to merge"),
+		progressbar.OptionSetItsString("tiles"),
+		progressbar.OptionShowIts(),
+		progressbar.OptionSpinnerType(14),	
+
+	)
+
+	
 
 	jobCount := len(dirsList)
 	log.Debug().Msgf("Making job channel of length %v", jobCount)
@@ -290,8 +299,10 @@ func GetAllTiles0(root string, zLvl string, workers int) (map[int][]string, []Ti
 		}
 		tSources = append(tSources, savedBase)
 		m[tXYInt] = tSources
+		gatherTilesBar.Add(1)
 	}
 
+	gatherTilesBar.Finish()
 	return m, tileList
 
 }

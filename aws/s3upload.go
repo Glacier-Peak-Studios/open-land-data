@@ -14,12 +14,15 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
+	"github.com/schollz/progressbar/v3"
 	"solidsilver.dev/openland/utils"
 )
 
 func main() {
 	workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
-	in := flag.String("i", "", "Filepath to use for testing")
+	uploadDir := flag.String("i", "", "Directory to upload files from")
+	region := flag.String("r", "us-west-2", "Region of the s3 bucket")
+	bucket := flag.String("b", "gp.us.general", "Name of the bucket to upload tiles to")
 	// zRange := flag.String("z", "18", "Zoom levels to generate. (Ex. \"2-16\") Must start with current zoom level")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
 		" 0 - Only prints error messages\n"+
@@ -31,27 +34,19 @@ func main() {
 	switch *verboseOpt {
 	case 0:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
-		break
 	case 1:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-		break
 	case 2:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		break
 	case 3:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-		break
 	default:
 		break
 	}
 
-	// sess, err := session.NewSession(&aws.Config{
-	// 	Region: aws.String("us-west-2")},
-	// )
-
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String("us-west-2")},
+		Region: aws.String(*region)},
 	)
 
 	if err != nil {
@@ -60,44 +55,55 @@ func main() {
 
 	uploader := s3manager.NewUploader(sess)
 
-	jobs := make(chan string, 500)
-	filesRet := make(chan string, 500)
+	toUploadPipe := make(chan string, 500)
 	results := make(chan string, 1000)
 
-	go utils.GetAllTiles3(*in, *workersOpt, jobs, filesRet)
+	go utils.GetAllTilesStreamed(*uploadDir, *workersOpt, toUploadPipe)
 
 	var workersDone uint64
 	workersTotal := uint64(*workersOpt)
 
+	
 	for i := 0; i < *workersOpt; i++ {
-		go uploadTileBucketWorker(filesRet, results, uploader, "usfstileserve.glacierpeak.app", &workersDone, workersTotal)
+		go uploadTileBucketWorker(toUploadPipe, results, uploader, *bucket, &workersDone, workersTotal)
 	}
+
+	progBar := progressbar.NewOptions(-1, 
+		progressbar.OptionSetDescription("Uploading files"),
+		progressbar.OptionSetItsString("files"),
+		progressbar.OptionShowIts(),
+		progressbar.OptionSpinnerType(14),	
+
+	)
 
 	for result := range results {
 		log.Debug().Msg(result)
+		progBar.Add(1)
 		// println(result)
 		// println("rslt len:", len(results))
 
 	}
+	progBar.Finish()
 
 }
 
 func uploadTileBucketWorker(jobs <-chan string, results chan<- string, uploader *s3manager.Uploader, bucketName string, workersDone *uint64, workerCount uint64) {
-	ignoreZL := make(map[int]bool)
-	for i := 10; i <= 16; i++ {
-		ignoreZL[i] = true
-	}
+	// ignoreZL := make(map[int]bool)
+	// for i := 10; i <= 16; i++ {
+	// 	ignoreZL[i] = true
+	// }
 
 	for job := range jobs {
 		tile, _ := utils.PathToTile(job)
 
-		shouldUpload := !ignoreZL[tile.Z]
+		// shouldUpload := !ignoreZL[tile.Z]
+		shouldUpload := true
 
-		if tile.Z == 17 {
-			if tile.X <= 26300 {
-				shouldUpload = false
-			}
-		}
+		// if tile.Z == 17 {
+		// 	if tile.X <= 26300 {
+		// 		shouldUpload = false
+		// 	}
+		// }
 
 		if shouldUpload {
 			err := uploadFileToBucket(uploader, bucketName, tile.GetPath(), job)
