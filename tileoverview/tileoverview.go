@@ -88,7 +88,7 @@ func CreateOverview(dir string, workers int) {
 	for i := 0; i < workers; i++ {
 		go utils.OverviewWorker(jobs, results)
 	}
-	queueSources(overviews, jobs)
+	go queueSources(overviews, jobs)
 
 	for i := 0; i < jobCount; i++ {
 		var rst = <-results

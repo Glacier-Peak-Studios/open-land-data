@@ -437,13 +437,15 @@ func DecodePNGFromPath(imgPath string) (image.Image, error) {
 func EncodePNGToPath(imgPath string, img image.Image) error {
 	out, err := os.Create(imgPath)
 	if err != nil {
-		log.Error().Msg("Could not create output image")
+		log.Err(err).Msgf("Could not create output file: %v", imgPath)
+		// log.Error().Msgf("Could not create output file: %v", imgPath)
 		return err
 	}
 	defer out.Close()
 	err = png.Encode(out, img)
 	if err != nil {
-		log.Error().Msg("Could not encode output image")
+		log.Err(err).Msg("Could not encode output image")
+		// log.Error().Msg("Could not encode output image")
 	}
 	return err
 }
