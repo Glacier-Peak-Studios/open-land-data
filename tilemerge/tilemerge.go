@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -96,6 +97,7 @@ func resultReaderWorker(toRead <-chan string, jobs chan utils.Tile, resultCount 
     progressbar.OptionSetDescription("Merging tiles..."),
 		progressbar.OptionSetItsString("tiles"),
 		progressbar.OptionShowIts(),
+		progressbar.OptionThrottle(1*time.Second),
 		progressbar.OptionSetPredictTime(true),
     progressbar.OptionSetTheme(progressbar.Theme{
         Saucer:        "=",

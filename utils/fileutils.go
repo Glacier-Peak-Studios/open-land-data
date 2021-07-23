@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/schollz/progressbar/v3"
@@ -115,14 +116,26 @@ func WalkRecursive(root string, workers int) []string {
 }
 
 func GetAllTiles2(root string, workers int) []string {
+
+	
 	dirsList, err := ioutil.ReadDir(root)
 	if err != nil {
 		log.Error().Err(err).Msg("Error reading sources list")
 	}
 
+	gatherTilesBar := progressbar.NewOptions(-1, 
+		progressbar.OptionSetDescription("Gathering tiles"),
+		progressbar.OptionSetItsString("tiles"),
+		progressbar.OptionShowIts(),
+		progressbar.OptionThrottle(1*time.Second),
+		progressbar.OptionSpinnerType(14),	
+
+	)
+
 	jobCount := len(dirsList)
 	jobs := make(chan string, jobCount)
 	filesRet := make(chan string, 200)
+
 
 	var workersDone uint64
 	workersTotal := uint64(workers)
@@ -142,8 +155,10 @@ func GetAllTiles2(root string, workers int) []string {
 
 	for tileFile := range filesRet {
 		tileList = append(tileList, tileFile)
+		gatherTilesBar.Add(1)
 	}
 
+	gatherTilesBar.Finish()
 	return tileList
 
 }
@@ -256,6 +271,7 @@ func GetAllTiles0(root string, zLvl string, workers int) (map[int][]string, []Ti
 		progressbar.OptionSetDescription("Gathering tiles to merge"),
 		progressbar.OptionSetItsString("tiles"),
 		progressbar.OptionShowIts(),
+		progressbar.OptionThrottle(1*time.Second),
 		progressbar.OptionSpinnerType(14),	
 
 	)

@@ -5,10 +5,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
+	"github.com/schollz/progressbar/v3"
 	"solidsilver.dev/openland/utils"
 )
 
@@ -69,17 +71,46 @@ func main() {
 	}
 	queueSources(sources, jobs)
 
+	progBar := progressbar.NewOptions(len(sources),
+    progressbar.OptionSetDescription("Cleaning tiles..."),
+		progressbar.OptionSetItsString("tiles"),
+		progressbar.OptionShowIts(),
+		progressbar.OptionThrottle(1*time.Second),
+		progressbar.OptionSetPredictTime(true),
+    progressbar.OptionSetTheme(progressbar.Theme{
+        Saucer:        "=",
+        SaucerHead:    ">",
+        SaucerPadding: " ",
+        BarStart:      "[",
+        BarEnd:        "]",
+    }),
+	)
+
 	for i := 0; i < jobCount; i++ {
 		var rst = <-results
+		progBar.Add(1)
 		log.Debug().Msg(rst)
 	}
 	close(jobs)
+	progBar.Finish()
 	log.Warn().Msg("Done with all jobs")
 
 }
 
 func queueSources(sources []string, jobs chan<- string) {
+	progBar := progressbar.NewOptions(len(sources),
+    progressbar.OptionSetDescription("Preparing tiles for cleaning..."),
+    progressbar.OptionSetTheme(progressbar.Theme{
+        Saucer:        "=",
+        SaucerHead:    ">",
+        SaucerPadding: " ",
+        BarStart:      "[",
+        BarEnd:        "]",
+    }),
+	)
 	for _, source := range sources {
 		jobs <- source
+		progBar.Add(1)
 	}
+	progBar.Finish()
 }

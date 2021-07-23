@@ -156,17 +156,23 @@ func MergeNTiles2(imgPaths []string, outImg string) error {
 }
 
 func MergeNTiles0(imgPaths []string, tile Tile, basePath string, outImg string) error {
+	whiteTolerance := 0.01
 	bgImg := image.NewRGBA(image.Rect(0, 0, 256, 256))
-	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{TRANSP}, image.Point{}, draw.Src)
+	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{TRANSP2}, image.Point{}, draw.Src)
 	for _, imgPath := range imgPaths {
 		base := basePath + imgPath
 		imgPathWBase := appendTileToBase(base, tile) + ".png"
 		img, err := DecodePNGFromPath(imgPathWBase)
-		if err != nil {
-			log.Debug().Msgf("Could not open image, using transparent: %v", imgPathWBase)
-			img = image.NewUniform(TRANSP)
+		if err == nil {
+			// blend.BlendImage(bgImg, img, blend.Multiply)
+			if !imgIsWhite(img, whiteTolerance) && !imgIsTransparent(img) {
+				draw.Draw(bgImg, img.Bounds(), img, image.Point{}, draw.Over)
+			}
+			// log.Debug().Msgf("Could not open image, using transparent: %v", imgPathWBase)
+			// img = image.NewUniform(TRANSP)
 		}
-		draw.Draw(bgImg, img.Bounds(), img, image.Point{}, draw.Over)
+		// blend.BlendImage(bgImg, img, blend.Multiply)
+		// draw.Draw(bgImg, img.Bounds(), img, image.Point{}, draw.Over)
 	}
 	err := EncodePNGToPath(outImg, bgImg)
 	return err
@@ -239,7 +245,7 @@ func canDeleteImg(imgPath string) bool {
 	for y := 0; y < size.Y; y++ {
 		for x := 0; x < size.X; x++ {
 			pxCol := img.At(x, y)
-			if pxCol != WHITE && !pixelIsTransparent(pxCol) {
+			if !pixelIsTransparent(pxCol) && !pixelIsWhite(pxCol, 0.01) {
 				notWhiteCount++
 			}
 		}
@@ -251,6 +257,38 @@ func pixelIsTransparent(col color.Color) bool {
 	_, _, _, a := col.RGBA()
 	return a == 0
 }
+
+func pixelIsWhite(col color.Color, tolerance float64) bool {
+	a := GetColorDistance(col, WHITE)
+	return a > tolerance
+}
+
+func imgIsTransparent(img image.Image) bool {
+	size := img.Bounds().Max
+	for y := 0; y < size.Y; y++ {
+		for x := 0; x < size.X; x++ {
+			pxCol := img.At(x, y)
+			if pixelIsTransparent(pxCol) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func imgIsWhite(img image.Image, tolerance float64) bool {
+	size := img.Bounds().Max
+	for y := 0; y < size.Y; y++ {
+		for x := 0; x < size.X; x++ {
+			pxCol := img.At(x, y)
+			if pixelIsWhite(pxCol, tolerance) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 
 func ImgOverRects(img image.Image, rects []image.Rectangle) image.Image {
 	bgWidth, bgHeight := 256, 256
@@ -307,8 +345,16 @@ func CleanTileEdge(imgPath string, edge int) error {
 
 }
 
+// function that computes the distance between two colors
+func GetColorDistance(c1, c2 color.Color) float64 {
+	r1, g1, b1, _ := c1.RGBA()
+	r2, g2, b2, _ := c2.RGBA()
+	return math.Sqrt(float64(math.Pow(float64(r1)-float64(r2), 2)+math.Pow(float64(g1)-float64(g2), 2)+math.Pow(float64(b1)-float64(b2), 2)))
+}
+
 func GetCoverageRectSide(img image.Image, edge int) (image.Rectangle, error) {
 	// img, _ := decodePNGFromPath(imgPath)
+	pxWhiteTolerance := 0.01
 	x, y := 0, 0
 	pxRng := IntRange(0, 256)
 	if edge%2 == 1 {
@@ -327,7 +373,7 @@ func GetCoverageRectSide(img image.Image, edge int) (image.Rectangle, error) {
 	for _, *outer = range pxRng {
 		for _, *inner = range pxRng {
 			pxCol := img.At(x, y)
-			if !pixelIsTransparent(pxCol) {
+			if !pixelIsTransparent(pxCol) && !pixelIsWhite(pxCol, pxWhiteTolerance) {
 				edgeFound = true
 				break
 			}
@@ -347,6 +393,7 @@ func GetCoverageRectSide(img image.Image, edge int) (image.Rectangle, error) {
 func GetCoverageRectCorner(img image.Image, corner int) ([]image.Rectangle, error) {
 	// img, _ := decodePNGFromPath(imgPath)
 	// x, y := 0, 0
+	pxWhiteTolerance := 0.01
 
 	xRng := IntRange(0, 256)
 	if corner%2 == 1 {
@@ -363,7 +410,7 @@ func GetCoverageRectCorner(img image.Image, corner int) ([]image.Rectangle, erro
 			x := xRng[revIdx]
 			y := yRng[yIdx]
 			pxCol := img.At(x, y)
-			if !pixelIsTransparent(pxCol) {
+			if !pixelIsTransparent(pxCol) && !pixelIsWhite(pxCol, pxWhiteTolerance) {
 				xFound = true
 			}
 
@@ -376,7 +423,7 @@ func GetCoverageRectCorner(img image.Image, corner int) ([]image.Rectangle, erro
 			x := xRng[xIdx]
 			y := yRng[revIdx]
 			pxCol := img.At(x, y)
-			if !pixelIsTransparent(pxCol) {
+			if !pixelIsTransparent(pxCol) && !pixelIsWhite(pxCol, pxWhiteTolerance) {
 				yFound = true
 			}
 		}

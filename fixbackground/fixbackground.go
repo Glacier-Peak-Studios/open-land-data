@@ -3,10 +3,12 @@ package main
 import (
 	"flag"
 	"path/filepath"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
+	"github.com/schollz/progressbar/v3"
 
 	"solidsilver.dev/openland/utils"
 )
@@ -68,6 +70,21 @@ func FixBackground(dir string, out string, workers int, zLvl string) {
 		// tileList = utils.AppendSetT(tileList, tile)
 	}
 
+	progBar := progressbar.NewOptions(len(tileList),
+    progressbar.OptionSetDescription("Fixing tile backgrounds..."),
+		progressbar.OptionSetItsString("tiles"),
+		progressbar.OptionShowIts(),
+		progressbar.OptionThrottle(1*time.Second),
+		progressbar.OptionSetPredictTime(true),
+    progressbar.OptionSetTheme(progressbar.Theme{
+        Saucer:        "=",
+        SaucerHead:    ">",
+        SaucerPadding: " ",
+        BarStart:      "[",
+        BarEnd:        "]",
+    }),
+	)
+
 	jobCount := len(tileList)
 	jobs := make(chan utils.Tile, jobCount)
 	results := make(chan string, jobCount)
@@ -82,8 +99,10 @@ func FixBackground(dir string, out string, workers int, zLvl string) {
 	}
 	for i := 0; i < jobCount; i++ {
 		var rst = <-results
+		progBar.Add(1)
 		log.Debug().Msg(rst)
 	}
 	close(jobs)
+	progBar.Finish()
 	log.Warn().Msg("Done with all jobs")
 }
