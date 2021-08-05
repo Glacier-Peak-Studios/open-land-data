@@ -17,6 +17,12 @@ var WHITE = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
 var TRANSP = color.NRGBA{R: 0, G: 0, B: 0, A: 0}
 var TRANSP2 = color.NRGBA{R: 255, G: 255, B: 255, A: 0}
 
+var TOP_LEFT_BOUNDS = image.Rect(0, 0, 256, 256)
+var TOP_RIGHT_BOUNDS = image.Rect(256, 0, 512, 256)
+var BTM_LEFT_BOUNDS = image.Rect(0, 256, 256, 512)
+var BTM_RIGHT_BOUNDS = image.Rect(256, 256, 512, 512)
+
+
 func CombineImages(img1 string, img2 string, outImg string) error {
 	imgFile1, err := os.Open(img1)
 	if err != nil {
@@ -44,10 +50,10 @@ func CombineImages(img1 string, img2 string, outImg string) error {
 	bgWidth, bgHeight := 256, 256
 	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
 
-	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{color.White}, image.ZP, draw.Src)
+	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{color.White}, image.Point{}, draw.Src)
 
-	draw.Draw(bgImg, img1D.Bounds(), img1D, image.ZP, draw.Over)
-	draw.Draw(bgImg, img2D.Bounds(), img2D, image.ZP, draw.Over)
+	draw.Draw(bgImg, img1D.Bounds(), img1D, image.Point{}, draw.Over)
+	draw.Draw(bgImg, img2D.Bounds(), img2D, image.Point{}, draw.Over)
 
 	out, err := os.Create(outImg)
 	if err != nil {
@@ -65,36 +71,44 @@ func CombineImages(img1 string, img2 string, outImg string) error {
 	return err
 }
 
+// GenerateOverviewTile takes in 4 image paths
+// and creates a quad layout image of size 512x512.
+// Layout format is:
+//
+// | img1 | img2 |
+//
+// | img3 | img4 |
 func GenerateOverviewTile(outName string, img1 string, img2 string, img3 string, img4 string) error {
 	imgLocs := []string{img1, img2, img3, img4}
-	imgs := make([]image.Image, 4)
+	imgRefs := make([]image.Image, 4)
 	for i, imgLoc := range imgLocs {
 		img, err := os.Open(imgLoc)
-		defer img.Close()
+		
 		var imgDec image.Image
 		if err != nil {
 			log.Debug().Msgf("Could not open image, using white: %v", imgLoc)
 			imgDec = image.NewUniform(TRANSP)
 		} else {
-			imgDec, err = png.Decode(img)
+			imgDec, _ = png.Decode(img)
+			defer img.Close()
 		}
-		imgs[i] = imgDec
+		imgRefs[i] = imgDec
 	}
 
 	bgWidth, bgHeight := 512, 512
 	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
-	// draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{color.White}, image.ZP, draw.Src)
-	if imgs[0] != nil {
-		draw.Draw(bgImg, image.Rect(0, 0, 256, 256), imgs[0], image.ZP, draw.Over)
+	// draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{color.White}, image.Point{}, draw.Src)
+	if imgRefs[0] != nil {
+		draw.Draw(bgImg, TOP_LEFT_BOUNDS, imgRefs[0], image.Point{}, draw.Over)
 	}
-	if imgs[1] != nil {
-		draw.Draw(bgImg, image.Rect(256, 0, 512, 256), imgs[1], image.ZP, draw.Over)
+	if imgRefs[1] != nil {
+		draw.Draw(bgImg, TOP_RIGHT_BOUNDS, imgRefs[1], image.Point{}, draw.Over)
 	}
-	if imgs[2] != nil {
-		draw.Draw(bgImg, image.Rect(0, 256, 256, 512), imgs[2], image.ZP, draw.Over)
+	if imgRefs[2] != nil {
+		draw.Draw(bgImg, BTM_LEFT_BOUNDS, imgRefs[2], image.Point{}, draw.Over)
 	}
-	if imgs[3] != nil {
-		draw.Draw(bgImg, image.Rect(256, 256, 512, 512), imgs[3], image.ZP, draw.Over)
+	if imgRefs[3] != nil {
+		draw.Draw(bgImg, BTM_RIGHT_BOUNDS, imgRefs[3], image.Point{}, draw.Over)
 	}
 
 	imgOut := resize.Resize(256, 256, bgImg, resize.NearestNeighbor)
@@ -110,23 +124,23 @@ func GenerateOverviewTile(outName string, img1 string, img2 string, img3 string,
 // composite output of these images to outImg path with a transparent
 // background
 func MergeNTiles(imgPaths []string, outImg string) error {
-	imgs := make([]image.Image, len(imgPaths))
+	imgRefs := make([]image.Image, len(imgPaths))
 	for i, imgPath := range imgPaths {
 		img, err := DecodePNGFromPath(imgPath)
 		if err != nil {
 			log.Debug().Msgf("Could not open image, using transparent: %v", imgPath)
 			img = image.NewUniform(TRANSP)
 		}
-		imgs[i] = img
+		imgRefs[i] = img
 	}
 
 	bgWidth, bgHeight := 256, 256
 	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
 
-	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{TRANSP}, image.ZP, draw.Src)
+	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{TRANSP}, image.Point{}, draw.Src)
 
-	for _, img := range imgs {
-		draw.Draw(bgImg, img.Bounds(), img, image.ZP, draw.Over)
+	for _, img := range imgRefs {
+		draw.Draw(bgImg, img.Bounds(), img, image.Point{}, draw.Over)
 	}
 
 	err := EncodePNGToPath(outImg, bgImg)
@@ -151,7 +165,7 @@ func MergeTiles(img1 string, img2 string, outImg string) error {
 	bgWidth, bgHeight := 256, 256
 	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
 
-	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{transp}, image.ZP, draw.Src)
+	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{transp}, image.Point{}, draw.Src)
 
 	img1WhiteP := GetPixelPercent(img1D, white)
 	img2WhiteP := GetPixelPercent(img2D, white)
@@ -165,11 +179,11 @@ func MergeTiles(img1 string, img2 string, outImg string) error {
 
 	// Determine drawing order by white content
 	if img1WhiteP > img2WhiteP || img1TransP > img2TransP {
-		draw.Draw(bgImg, img1D.Bounds(), img1D, image.ZP, draw.Over)
-		draw.Draw(bgImg, img2D.Bounds(), img2D, image.ZP, draw.Over)
+		draw.Draw(bgImg, img1D.Bounds(), img1D, image.Point{}, draw.Over)
+		draw.Draw(bgImg, img2D.Bounds(), img2D, image.Point{}, draw.Over)
 	} else {
-		draw.Draw(bgImg, img2D.Bounds(), img2D, image.ZP, draw.Over)
-		draw.Draw(bgImg, img1D.Bounds(), img1D, image.ZP, draw.Over)
+		draw.Draw(bgImg, img2D.Bounds(), img2D, image.Point{}, draw.Over)
+		draw.Draw(bgImg, img1D.Bounds(), img1D, image.Point{}, draw.Over)
 	}
 	err = EncodePNGToPath(outImg, bgImg)
 	return err
@@ -218,13 +232,15 @@ func ImgOverRects(img image.Image, rects []image.Rectangle) image.Image {
 	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
 
 	for _, rect := range rects {
-		draw.Draw(bgImg, rect, &image.Uniform{color.White}, image.ZP, draw.Over)
+		draw.Draw(bgImg, rect, &image.Uniform{color.White}, image.Point{}, draw.Over)
 	}
 
-	draw.Draw(bgImg, img.Bounds(), img, image.ZP, draw.Over)
+	draw.Draw(bgImg, img.Bounds(), img, image.Point{}, draw.Over)
 
 	return bgImg
 }
+
+
 
 func CleanTileEdge(imgPath string, edge int) error {
 	img, _ := DecodePNGFromPath(imgPath)

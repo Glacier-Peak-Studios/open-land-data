@@ -19,9 +19,9 @@ func PDF2TiffWorker(jobs <-chan string, results chan<- string, outDir string, cm
 		println("-> Job -", job)
 		pdfLayers := GetGeoPDFLayers(job)
 
-		pdfLayers = Filter(pdfLayers, RemoveLayer)
-		rmLayers := strings.Join(pdfLayers[:], ",")
-		args := append(constArgs, "--config", "GDAL_PDF_LAYERS_OFF", rmLayers)
+		pdfLayers = Filter(pdfLayers, LayerFilterNSW)
+		layersStr := strings.Join(pdfLayers[:], ",")
+		args := append(constArgs, "--config", "GDAL_PDF_LAYERS", layersStr)
 
 		fout := filepath.Join(outDir, StripExt(job)+".tif")
 		args = append(args, job, fout)
@@ -39,6 +39,24 @@ func PDF2TiffWorker(jobs <-chan string, results chan<- string, outDir string, cm
 		// time.Sleep(10 * time.Second)
 	}
 
+}
+
+func LayerFilterNSW(layer string) bool {
+	if strings.HasPrefix(layer, "TOPO_BASEMAP.Image") {
+		return true
+	}
+	if strings.HasPrefix(layer, "TOPO_BASEMAP.Labels") {
+		return true
+	}
+	if strings.HasPrefix(layer, "TOPO_BASEMAP.NSW_Map_Data") {
+		return true
+	}
+
+	return false
+}
+
+func RemoveLayerNSW(layer string) bool {
+	return !LayerFilterNSW(layer)
 }
 
 func LayerFilter(layer string) bool {
