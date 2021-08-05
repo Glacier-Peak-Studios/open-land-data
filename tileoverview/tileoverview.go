@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
+	"github.com/schollz/progressbar/v3"
 
 	"solidsilver.dev/openland/utils"
 )
@@ -78,6 +80,20 @@ func CreateOverview(dir string, workers int) {
 
 		// tileList = utils.AppendSetT(tileList, tile)
 	}
+
+	progBar := progressbar.NewOptions(len(overviews),
+    progressbar.OptionSetDescription(fmt.Sprintf("Generating overview for level %s...", dir)),
+		progressbar.OptionSetItsString("tiles"),
+		progressbar.OptionShowIts(),
+		progressbar.OptionSetPredictTime(true),
+    progressbar.OptionSetTheme(progressbar.Theme{
+        Saucer:        "=",
+        SaucerHead:    ">",
+        SaucerPadding: " ",
+        BarStart:      "[",
+        BarEnd:        "]",
+    }),
+	)
 	// sources = utils.SetMap(sources, utils.OverviewRoot)
 
 	jobCount := len(overviews)
@@ -88,13 +104,15 @@ func CreateOverview(dir string, workers int) {
 	for i := 0; i < workers; i++ {
 		go utils.OverviewWorker(jobs, results)
 	}
-	queueSources(overviews, jobs)
+	go queueSources(overviews, jobs)
 
 	for i := 0; i < jobCount; i++ {
 		var rst = <-results
 		log.Debug().Msg(rst)
+		progBar.Add(1)
 	}
 	close(jobs)
+	progBar.Finish()
 	log.Warn().Msg("Done with all jobs")
 }
 
