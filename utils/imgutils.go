@@ -156,7 +156,7 @@ func MergeNTiles2(imgPaths []string, outImg string) error {
 }
 
 func MergeNTiles0(imgPaths []string, tile Tile, basePath string, outImg string) error {
-	whiteTolerance := 0.01
+	whiteTolerance := 0.1
 	bgImg := image.NewRGBA(image.Rect(0, 0, 256, 256))
 	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{TRANSP2}, image.Point{}, draw.Src)
 	for _, imgPath := range imgPaths {
@@ -245,7 +245,7 @@ func canDeleteImg(imgPath string) bool {
 	for y := 0; y < size.Y; y++ {
 		for x := 0; x < size.X; x++ {
 			pxCol := img.At(x, y)
-			if !pixelIsTransparent(pxCol) && !pixelIsWhite(pxCol, 0.01) {
+			if !pixelIsTransparent(pxCol) && !pixelIsWhite(pxCol, 0.1) {
 				notWhiteCount++
 			}
 		}
@@ -259,8 +259,12 @@ func pixelIsTransparent(col color.Color) bool {
 }
 
 func pixelIsWhite(col color.Color, tolerance float64) bool {
-	a := GetColorDistance(col, WHITE)
-	return a > tolerance
+	diff := GetColorDistance(col, WHITE)
+	maxDistance := 113509.949674
+	percentDiff := diff / maxDistance
+	// fmt.Printf("Color distance: %f\n", a)
+	// fmt.Printf("Color space distance percent: %f\n\n", percent)
+	return percentDiff < tolerance
 }
 
 func imgIsTransparent(img image.Image) bool {
@@ -268,12 +272,12 @@ func imgIsTransparent(img image.Image) bool {
 	for y := 0; y < size.Y; y++ {
 		for x := 0; x < size.X; x++ {
 			pxCol := img.At(x, y)
-			if pixelIsTransparent(pxCol) {
-				return true
+			if !pixelIsTransparent(pxCol) {
+				return false
 			}
 		}
 	}
-	return false
+	return true
 }
 
 func imgIsWhite(img image.Image, tolerance float64) bool {
@@ -281,12 +285,12 @@ func imgIsWhite(img image.Image, tolerance float64) bool {
 	for y := 0; y < size.Y; y++ {
 		for x := 0; x < size.X; x++ {
 			pxCol := img.At(x, y)
-			if pixelIsWhite(pxCol, tolerance) {
-				return true
+			if !pixelIsWhite(pxCol, tolerance) {
+				return false
 			}
 		}
 	}
-	return false
+	return true
 }
 
 
@@ -349,12 +353,12 @@ func CleanTileEdge(imgPath string, edge int) error {
 func GetColorDistance(c1, c2 color.Color) float64 {
 	r1, g1, b1, _ := c1.RGBA()
 	r2, g2, b2, _ := c2.RGBA()
-	return math.Sqrt(float64(math.Pow(float64(r1)-float64(r2), 2)+math.Pow(float64(g1)-float64(g2), 2)+math.Pow(float64(b1)-float64(b2), 2)))
+	return math.Sqrt(math.Pow(float64(r1)-float64(r2), 2)+math.Pow(float64(g1)-float64(g2), 2)+math.Pow(float64(b1)-float64(b2), 2))
 }
 
 func GetCoverageRectSide(img image.Image, edge int) (image.Rectangle, error) {
 	// img, _ := decodePNGFromPath(imgPath)
-	pxWhiteTolerance := 0.01
+	pxWhiteTolerance := 0.1
 	x, y := 0, 0
 	pxRng := IntRange(0, 256)
 	if edge%2 == 1 {
@@ -393,7 +397,7 @@ func GetCoverageRectSide(img image.Image, edge int) (image.Rectangle, error) {
 func GetCoverageRectCorner(img image.Image, corner int) ([]image.Rectangle, error) {
 	// img, _ := decodePNGFromPath(imgPath)
 	// x, y := 0, 0
-	pxWhiteTolerance := 0.01
+	pxWhiteTolerance := 0.1
 
 	xRng := IntRange(0, 256)
 	if corner%2 == 1 {
