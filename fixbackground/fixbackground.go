@@ -3,10 +3,12 @@ package main
 import (
 	"flag"
 	"path/filepath"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
+	"github.com/schollz/progressbar/v3"
 
 	"solidsilver.dev/openland/utils"
 )
@@ -16,6 +18,7 @@ func main() {
 	workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
 	inDir := flag.String("i", "", "The root directory of the source files")
 	outDir := flag.String("o", "", "The output directory of the source files")
+	zLevel := flag.String("z", "17", "Z level of tiles to process")
 	// zRange := flag.String("z", "17", "Zoom level to fix. (Ex. \"2-16\") Must start with current zoom level")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
 		" 0 - Only prints error messages\n"+
@@ -49,15 +52,15 @@ func main() {
 	// 	zMax, _ = strconv.Atoi(rng[1])
 	// }
 	// log.Info().Msgf("Generating zoom from %v to %v", zMax, zMin)
-	FixBackground(*inDir, *outDir, *workersOpt)
+	FixBackground(*inDir, *outDir, *workersOpt, *zLevel)
 	// CreateOverviewRange(zMax, zMin, *inDir, *workersOpt)
 
 }
 
-func FixBackground(dir string, out string, workers int) {
+func FixBackground(dir string, out string, workers int, zLvl string) {
 	m := make(map[string]bool)
 	// sources, _ := utils.WalkMatch(dir, "*.png")
-	sources := utils.GetAllTiles2(filepath.Join(dir, "17"), workers)
+	sources := utils.GetAllTiles2(filepath.Join(dir, zLvl), workers)
 	var tileList []utils.Tile
 
 	for _, source := range sources {
@@ -66,6 +69,21 @@ func FixBackground(dir string, out string, workers int) {
 		tileList = append(tileList, tile)
 		// tileList = utils.AppendSetT(tileList, tile)
 	}
+
+	progBar := progressbar.NewOptions(len(tileList),
+    progressbar.OptionSetDescription("Fixing tile backgrounds..."),
+		progressbar.OptionSetItsString("tiles"),
+		progressbar.OptionShowIts(),
+		progressbar.OptionThrottle(1*time.Second),
+		progressbar.OptionSetPredictTime(true),
+    progressbar.OptionSetTheme(progressbar.Theme{
+        Saucer:        "=",
+        SaucerHead:    ">",
+        SaucerPadding: " ",
+        BarStart:      "[",
+        BarEnd:        "]",
+    }),
+	)
 
 	jobCount := len(tileList)
 	jobs := make(chan utils.Tile, jobCount)
@@ -81,8 +99,10 @@ func FixBackground(dir string, out string, workers int) {
 	}
 	for i := 0; i < jobCount; i++ {
 		var rst = <-results
+		progBar.Add(1)
 		log.Debug().Msg(rst)
 	}
 	close(jobs)
+	progBar.Finish()
 	log.Warn().Msg("Done with all jobs")
 }

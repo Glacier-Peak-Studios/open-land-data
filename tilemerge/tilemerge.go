@@ -5,10 +5,13 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
+	"github.com/schollz/progressbar/v3"
 
 	"solidsilver.dev/openland/utils"
 )
@@ -23,6 +26,7 @@ func main() {
 	src2 := flag.String("src2", "/Users/solidsilver/Code/USFS/TilemergeTest/GPWestFSTopo", "The root directory of the source files")
 	massMerge := flag.Bool("m", false, "Merge all tilesets in a given directory (ignores -src2 flag)")
 	outDir := flag.String("o", "/Users/solidsilver/Code/USFS/TilemergeTest/GPTilemerge", "The root directory of the source files")
+	zLevel := flag.String("z", "17", "Z level of tiles to process")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
 		" 0 - Only prints error messages\n"+
 		" 1 - Adds run specs and error details\n"+
@@ -34,67 +38,83 @@ func main() {
 	case 0:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 		// log.SetLevel(log.ErrorLevel)
-		break
 	case 1:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
 		// log.SetLevel(log.WarnLevel)
-		break
 	case 2:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		break
 	case 3:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 		// log.SetReportCaller(true)
-		break
 	default:
 		break
 	}
 
 	if *massMerge {
-		MassTileMerge(*src1, *outDir, *workersOpt)
+		MassTileMerge(*src1, *outDir, *zLevel, *workersOpt)
 	} else {
 		TileMerge(*src1, *src2, *outDir, *workersOpt)
 	}
 
 }
 
-func MassTileMerge(setsDir string, out string, workers int) {
-	// m := make(map[string][]string)
-	// sources, _ := utils.WalkMatch(setsDir, "*.png")
-	// sources, _ := utils.GetAllTiles(setsDir, workers)
-	// var tileList []utils.Tile
 
-	m, tileList := utils.GetAllTiles(setsDir, workers)
+func MassTileMerge(setsDir string, out string, zLevel string, workers int) {
 
-	// for _, source := range sources {
-	// 	tile, base := utils.PathToTile(source)
-	// 	tSources := m[tile.GetPathXY()]
-	// 	tSources = append(tSources, base)
-	// 	m[tile.GetPathXY()] = tSources
-	// 	tileList = utils.AppendSetT(tileList, tile)
-	// }
+	m, tileList := utils.GetAllTiles0(setsDir, zLevel, workers)
 
-	// sources = nil
-	println("done")
+	log.Warn().Msg("Done gathering tiles.")
 
-	jobCount := len(tileList)
+	rsltLen := len(tileList)
+	jobCount := 32
 	jobs := make(chan utils.Tile, jobCount)
 	results := make(chan string, jobCount)
+	readChan := make(chan int, 1)
 
 	log.Warn().Msgf("Running with %v workers", workers)
+	go resultReaderWorker(results, jobs, rsltLen, readChan)
+
+	mapLock := sync.RWMutex{}
+	
 	for i := 0; i < workers; i++ {
-		go utils.TilesetMergeWorker2(jobs, results, m, out)
+		go utils.TilesetMergeWorker0(jobs, results, m, out, setsDir, &mapLock)
 	}
 	for _, tile := range tileList {
 		jobs <- tile
 	}
-	for i := 0; i < jobCount; i++ {
-		var rst = <-results
-		log.Debug().Msg(rst)
+
+	<-readChan
+
+	log.Warn().Msg("Done with all jobs")
+
+}
+
+
+func resultReaderWorker(toRead <-chan string, jobs chan utils.Tile, resultCount int, result chan<- int) {
+
+	progBar := progressbar.NewOptions(resultCount,
+    progressbar.OptionSetDescription("Merging tiles..."),
+		progressbar.OptionSetItsString("tiles"),
+		progressbar.OptionShowIts(),
+		progressbar.OptionThrottle(1*time.Second),
+		progressbar.OptionSetPredictTime(true),
+    progressbar.OptionSetTheme(progressbar.Theme{
+        Saucer:        "=",
+        SaucerHead:    ">",
+        SaucerPadding: " ",
+        BarStart:      "[",
+        BarEnd:        "]",
+    }),
+	)
+
+	for i := 0; i < resultCount; i++ {
+		<-toRead
+		progBar.Add(1)
 	}
 	close(jobs)
-	log.Warn().Msg("Done with all jobs")
+	progBar.Finish()
+	result <- 1
 
 }
 
@@ -142,18 +162,6 @@ func TileMerge(src1 string, src2 string, out string, workers int) {
 	log.Warn().Msg("Done with all jobs")
 }
 
-func fileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return !info.IsDir()
-}
-
-func logMsg(results chan<- string, source, msg string) {
-	toSend := source + ": " + msg
-	results <- toSend
-}
 
 func queueSources(sources []string, jobs chan<- string) {
 	for _, source := range sources {
@@ -161,23 +169,6 @@ func queueSources(sources []string, jobs chan<- string) {
 	}
 }
 
-func isEvenTile(path string) bool {
-	// println("Checking path: ", path)
-	yStr := utils.StripExt(filepath.Base(path))
-	fdir := filepath.Dir(path)
-	xStr := filepath.Base(fdir)
-
-	// println("X: ", xStr, " - Y: ", yStr)
-
-	x, err := strconv.Atoi(xStr)
-	y, err := strconv.Atoi(yStr)
-
-	if err != nil {
-		log.Error().Msg("Could not parse string to int")
-	}
-
-	return x%2 == 0 && y%2 == 0
-}
 
 func Filter(vs []string, f func(string) bool) []string {
 	vsf := make([]string, 0)
