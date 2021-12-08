@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/schollz/progressbar/v3"
-	"glacierpeak.app/openland/utils"
+	utils "glacierpeak.app/openland/pkg"
 )
 
 func main() {
@@ -58,7 +58,6 @@ func main() {
 
 }
 
-
 func MassTileMerge(setsDir string, out string, zLevel string, workers int) {
 
 	m, tileList := utils.GetAllTiles0(setsDir, zLevel, workers)
@@ -75,7 +74,7 @@ func MassTileMerge(setsDir string, out string, zLevel string, workers int) {
 	go resultReaderWorker(results, jobs, rsltLen, readChan)
 
 	mapLock := sync.RWMutex{}
-	
+
 	for i := 0; i < workers; i++ {
 		go utils.TilesetMergeWorker0(jobs, results, m, out, setsDir, &mapLock)
 	}
@@ -89,22 +88,21 @@ func MassTileMerge(setsDir string, out string, zLevel string, workers int) {
 
 }
 
-
 func resultReaderWorker(toRead <-chan string, jobs chan utils.Tile, resultCount int, result chan<- int) {
 
 	progBar := progressbar.NewOptions(resultCount,
-    progressbar.OptionSetDescription("Merging tiles..."),
+		progressbar.OptionSetDescription("Merging tiles..."),
 		progressbar.OptionSetItsString("tiles"),
 		progressbar.OptionShowIts(),
 		progressbar.OptionThrottle(1*time.Second),
 		progressbar.OptionSetPredictTime(true),
-    progressbar.OptionSetTheme(progressbar.Theme{
-        Saucer:        "=",
-        SaucerHead:    ">",
-        SaucerPadding: " ",
-        BarStart:      "[",
-        BarEnd:        "]",
-    }),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "=",
+			SaucerHead:    ">",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}),
 	)
 
 	for i := 0; i < resultCount; i++ {
@@ -161,13 +159,11 @@ func TileMerge(src1 string, src2 string, out string, workers int) {
 	log.Warn().Msg("Done with all jobs")
 }
 
-
 func queueSources(sources []string, jobs chan<- string) {
 	for _, source := range sources {
 		jobs <- source
 	}
 }
-
 
 func Filter(vs []string, f func(string) bool) []string {
 	vsf := make([]string, 0)

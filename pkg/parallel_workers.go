@@ -320,7 +320,7 @@ func appendTileToBase(base string, tile Tile) string {
 	return filepath.Join(base, tile.GetPath())
 }
 
-func TileTrimWorker(jobs <-chan string, results chan<- string, zoom int) {
+func TileCleanupWorker(jobs <-chan string, results chan<- string, zoom int) {
 	for job := range jobs {
 		println(job)
 		basepath := job

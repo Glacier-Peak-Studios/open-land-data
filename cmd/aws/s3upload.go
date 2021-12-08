@@ -15,7 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/schollz/progressbar/v3"
-	"glacierpeak.app/openland/utils"
+	utils "glacierpeak.app/openland/pkg"
 )
 
 func main() {
@@ -45,8 +45,50 @@ func main() {
 		break
 	}
 
+	// sess, err := session.NewSession(&aws.Config{
+	// 	Region: aws.String(*region)},
+	// )
+
+	// if err != nil {
+	// 	exitErrorf("Couldn't create session", err)
+	// }
+
+	// uploader := s3manager.NewUploader(sess)
+
+	// toUploadPipe := make(chan string, 500)
+	// results := make(chan string, 1000)
+
+	// go utils.GetAllTilesStreamed(*uploadDir, *workersOpt, toUploadPipe)
+
+	// var workersDone uint64
+	// workersTotal := uint64(*workersOpt)
+
+	// for i := 0; i < *workersOpt; i++ {
+	// 	go uploadTileBucketWorker(toUploadPipe, results, uploader, *bucket, &workersDone, workersTotal)
+	// }
+
+	// progBar := progressbar.NewOptions(-1,
+	// 	progressbar.OptionSetDescription("Uploading files"),
+	// 	progressbar.OptionSetItsString("files"),
+	// 	progressbar.OptionShowIts(),
+	// 	progressbar.OptionSpinnerType(14),
+	// )
+
+	// for result := range results {
+	// 	log.Debug().Msg(result)
+	// 	progBar.Add(1)
+	// 	// println(result)
+	// 	// println("rslt len:", len(results))
+
+	// }
+	// progBar.Finish()
+	S3Upload(*region, *bucket, *uploadDir, *workersOpt)
+
+}
+
+func S3Upload(region string, bucket string, uploadDir string, workers int) {
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(*region)},
+		Region: aws.String(region)},
 	)
 
 	if err != nil {
@@ -58,22 +100,20 @@ func main() {
 	toUploadPipe := make(chan string, 500)
 	results := make(chan string, 1000)
 
-	go utils.GetAllTilesStreamed(*uploadDir, *workersOpt, toUploadPipe)
+	go utils.GetAllTilesStreamed(uploadDir, workers, toUploadPipe)
 
 	var workersDone uint64
-	workersTotal := uint64(*workersOpt)
+	workersTotal := uint64(workers)
 
-	
-	for i := 0; i < *workersOpt; i++ {
-		go uploadTileBucketWorker(toUploadPipe, results, uploader, *bucket, &workersDone, workersTotal)
+	for i := 0; i < workers; i++ {
+		go uploadTileBucketWorker(toUploadPipe, results, uploader, bucket, &workersDone, workersTotal)
 	}
 
-	progBar := progressbar.NewOptions(-1, 
+	progBar := progressbar.NewOptions(-1,
 		progressbar.OptionSetDescription("Uploading files"),
 		progressbar.OptionSetItsString("files"),
 		progressbar.OptionShowIts(),
-		progressbar.OptionSpinnerType(14),	
-
+		progressbar.OptionSpinnerType(14),
 	)
 
 	for result := range results {
@@ -84,7 +124,6 @@ func main() {
 
 	}
 	progBar.Finish()
-
 }
 
 func uploadTileBucketWorker(jobs <-chan string, results chan<- string, uploader *s3manager.Uploader, bucketName string, workersDone *uint64, workerCount uint64) {

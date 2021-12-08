@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/schollz/progressbar/v3"
-	"glacierpeak.app/openland/utils"
+	utils "glacierpeak.app/openland/pkg"
 )
 
 func main() {
@@ -70,18 +70,18 @@ func FixBackground(dir string, out string, workers int, zLvl string) {
 	}
 
 	progBar := progressbar.NewOptions(len(tileList),
-    progressbar.OptionSetDescription("Fixing tile backgrounds..."),
+		progressbar.OptionSetDescription("Fixing tile backgrounds..."),
 		progressbar.OptionSetItsString("tiles"),
 		progressbar.OptionShowIts(),
 		progressbar.OptionThrottle(1*time.Second),
 		progressbar.OptionSetPredictTime(true),
-    progressbar.OptionSetTheme(progressbar.Theme{
-        Saucer:        "=",
-        SaucerHead:    ">",
-        SaucerPadding: " ",
-        BarStart:      "[",
-        BarEnd:        "]",
-    }),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "=",
+			SaucerHead:    ">",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}),
 	)
 
 	jobCount := len(tileList)

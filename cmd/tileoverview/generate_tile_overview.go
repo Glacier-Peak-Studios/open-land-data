@@ -11,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/schollz/progressbar/v3"
-	"glacierpeak.app/openland/utils"
+	utils "glacierpeak.app/openland/pkg"
 )
 
 func main() {
@@ -81,17 +81,17 @@ func CreateOverview(dir string, workers int) {
 	}
 
 	progBar := progressbar.NewOptions(len(overviews),
-    progressbar.OptionSetDescription(fmt.Sprintf("Generating overview for level %s...", dir)),
+		progressbar.OptionSetDescription(fmt.Sprintf("Generating overview for level %s...", dir)),
 		progressbar.OptionSetItsString("tiles"),
 		progressbar.OptionShowIts(),
 		progressbar.OptionSetPredictTime(true),
-    progressbar.OptionSetTheme(progressbar.Theme{
-        Saucer:        "=",
-        SaucerHead:    ">",
-        SaucerPadding: " ",
-        BarStart:      "[",
-        BarEnd:        "]",
-    }),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "=",
+			SaucerHead:    ">",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}),
 	)
 	// sources = utils.SetMap(sources, utils.OverviewRoot)
 

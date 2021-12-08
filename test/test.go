@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
-	"glacierpeak.app/openland/utils"
+	utils "glacierpeak.app/openland/pkg"
 )
 
 func main() {
@@ -53,7 +53,6 @@ func main() {
 		println(layer)
 	}
 
-	
 	// fileList := utils.WalkRecursive(*in, *workersOpt)
 	// fileList := utils.GetAllTiles2(*in, *workersOpt)
 	// println("Got files, printing")

@@ -11,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/schollz/progressbar/v3"
-	"glacierpeak.app/openland/utils"
+	utils "glacierpeak.app/openland/pkg"
 )
 
 func main() {
@@ -34,56 +34,101 @@ func main() {
 	case 0:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 		// log.SetLevel(log.ErrorLevel)
-		break
 	case 1:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
 		// log.SetLevel(log.WarnLevel)
-		break
+
 	case 2:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		break
+
 	case 3:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 		// log.SetReportCaller(true)
-		break
+
 	default:
 		break
 	}
 
 	// log.Warn().Msgf("Searching sources dir: %v", *outDir)
 	// sources, _ := utils.WalkMatch(*inDir, "*.pdf")
-	files, _ := ioutil.ReadDir(*inDir)
+	// files, _ := ioutil.ReadDir(*inDir)
+	// files = utils.FilterFI(files, func(file os.FileInfo) bool {
+	// 	return file.IsDir()
+	// })
+	// sources := utils.MapFI(files, func(file os.FileInfo) string {
+	// 	return filepath.Join(*inDir, file.Name())
+	// })
+
+	// jobCount := len(sources)
+	// jobs := make(chan string, jobCount)
+	// results := make(chan string, jobCount)
+
+	// log.Warn().Msgf("Running with %v workers", *workersOpt)
+	// for i := 0; i < *workersOpt; i++ {
+	// 	go utils.TileCleanupWorker(jobs, results, *zoomLvl)
+	// }
+	// queueSources(sources, jobs)
+
+	// progBar := progressbar.NewOptions(len(sources),
+	// 	progressbar.OptionSetDescription("Cleaning tiles..."),
+	// 	progressbar.OptionSetItsString("tiles"),
+	// 	progressbar.OptionShowIts(),
+	// 	progressbar.OptionThrottle(1*time.Second),
+	// 	progressbar.OptionSetPredictTime(true),
+	// 	progressbar.OptionSetTheme(progressbar.Theme{
+	// 		Saucer:        "=",
+	// 		SaucerHead:    ">",
+	// 		SaucerPadding: " ",
+	// 		BarStart:      "[",
+	// 		BarEnd:        "]",
+	// 	}),
+	// )
+
+	// for i := 0; i < jobCount; i++ {
+	// 	var rst = <-results
+	// 	progBar.Add(1)
+	// 	log.Debug().Msg(rst)
+	// }
+	// close(jobs)
+	// progBar.Finish()
+	// log.Warn().Msg("Done with all jobs")
+	CleanupTiles(*inDir, *zoomLvl, *workersOpt)
+
+}
+
+func CleanupTiles(inDir string, zoomLvl int, workers int) {
+	files, _ := ioutil.ReadDir(inDir)
 	files = utils.FilterFI(files, func(file os.FileInfo) bool {
 		return file.IsDir()
 	})
 	sources := utils.MapFI(files, func(file os.FileInfo) string {
-		return filepath.Join(*inDir, file.Name())
+		return filepath.Join(inDir, file.Name())
 	})
 
 	jobCount := len(sources)
 	jobs := make(chan string, jobCount)
 	results := make(chan string, jobCount)
 
-	log.Warn().Msgf("Running with %v workers", *workersOpt)
-	for i := 0; i < *workersOpt; i++ {
-		go utils.TileTrimWorker(jobs, results, *zoomLvl)
+	log.Warn().Msgf("Running with %v workers", workers)
+	for i := 0; i < workers; i++ {
+		go utils.TileCleanupWorker(jobs, results, zoomLvl)
 	}
 	queueSources(sources, jobs)
 
 	progBar := progressbar.NewOptions(len(sources),
-    progressbar.OptionSetDescription("Cleaning tiles..."),
+		progressbar.OptionSetDescription("Cleaning tiles..."),
 		progressbar.OptionSetItsString("tiles"),
 		progressbar.OptionShowIts(),
 		progressbar.OptionThrottle(1*time.Second),
 		progressbar.OptionSetPredictTime(true),
-    progressbar.OptionSetTheme(progressbar.Theme{
-        Saucer:        "=",
-        SaucerHead:    ">",
-        SaucerPadding: " ",
-        BarStart:      "[",
-        BarEnd:        "]",
-    }),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "=",
+			SaucerHead:    ">",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}),
 	)
 
 	for i := 0; i < jobCount; i++ {
@@ -94,19 +139,18 @@ func main() {
 	close(jobs)
 	progBar.Finish()
 	log.Warn().Msg("Done with all jobs")
-
 }
 
 func queueSources(sources []string, jobs chan<- string) {
 	progBar := progressbar.NewOptions(len(sources),
-    progressbar.OptionSetDescription("Preparing tiles for cleaning..."),
-    progressbar.OptionSetTheme(progressbar.Theme{
-        Saucer:        "=",
-        SaucerHead:    ">",
-        SaucerPadding: " ",
-        BarStart:      "[",
-        BarEnd:        "]",
-    }),
+		progressbar.OptionSetDescription("Preparing tiles for cleaning..."),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "=",
+			SaucerHead:    ">",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}),
 	)
 	for _, source := range sources {
 		jobs <- source
