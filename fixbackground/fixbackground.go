@@ -9,8 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/schollz/progressbar/v3"
-
-	"solidsilver.dev/openland/utils"
+	"glacierpeak.app/openland/utils"
 )
 
 func main() {

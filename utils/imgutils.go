@@ -16,6 +16,7 @@ import (
 var WHITE = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
 var TRANSP = color.NRGBA{R: 0, G: 0, B: 0, A: 0}
 var TRANSP2 = color.NRGBA{R: 255, G: 255, B: 255, A: 0}
+
 // var bgWidth, bgHeight = 256, 256
 // var bgImg = image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
 
@@ -23,7 +24,6 @@ var TOP_LEFT_BOUNDS = image.Rect(0, 0, 256, 256)
 var TOP_RIGHT_BOUNDS = image.Rect(256, 0, 512, 256)
 var BTM_LEFT_BOUNDS = image.Rect(0, 256, 256, 512)
 var BTM_RIGHT_BOUNDS = image.Rect(256, 256, 512, 512)
-
 
 func CombineImages(img1 string, img2 string, outImg string) error {
 	imgFile1, err := os.Open(img1)
@@ -101,17 +101,17 @@ func GenerateOverviewTile(outName string, img1 string, img2 string, img3 string,
 	bgWidth, bgHeight := 512, 512
 	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
 	// draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{color.White}, image.Point{}, draw.Src)
-	if imgs[0] != nil {
-		draw.Draw(bgImg, image.Rect(0, 0, 256, 256), imgs[0], image.Point{}, draw.Over)
+	if imgRefs[0] != nil {
+		draw.Draw(bgImg, image.Rect(0, 0, 256, 256), imgRefs[0], image.Point{}, draw.Over)
 	}
-	if imgs[1] != nil {
-		draw.Draw(bgImg, image.Rect(256, 0, 512, 256), imgs[1], image.Point{}, draw.Over)
+	if imgRefs[1] != nil {
+		draw.Draw(bgImg, image.Rect(256, 0, 512, 256), imgRefs[1], image.Point{}, draw.Over)
 	}
-	if imgs[2] != nil {
-		draw.Draw(bgImg, image.Rect(0, 256, 256, 512), imgs[2], image.Point{}, draw.Over)
+	if imgRefs[2] != nil {
+		draw.Draw(bgImg, image.Rect(0, 256, 256, 512), imgRefs[2], image.Point{}, draw.Over)
 	}
-	if imgs[3] != nil {
-		draw.Draw(bgImg, image.Rect(256, 256, 512, 512), imgs[3], image.Point{}, draw.Over)
+	if imgRefs[3] != nil {
+		draw.Draw(bgImg, image.Rect(256, 256, 512, 512), imgRefs[3], image.Point{}, draw.Over)
 	}
 
 	imgOut := resize.Resize(256, 256, bgImg, resize.NearestNeighbor)
@@ -142,7 +142,7 @@ func MergeNTiles(imgPaths []string, outImg string) error {
 
 	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{TRANSP}, image.Point{}, draw.Src)
 
-	for _, img := range imgs {
+	for _, img := range imgRefs {
 		draw.Draw(bgImg, img.Bounds(), img, image.Point{}, draw.Over)
 	}
 
@@ -306,7 +306,6 @@ func imgIsWhite(img image.Image, tolerance float64) bool {
 	return true
 }
 
-
 func ImgOverRects(img image.Image, rects []image.Rectangle) image.Image {
 	bgWidth, bgHeight := 256, 256
 	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
@@ -319,8 +318,6 @@ func ImgOverRects(img image.Image, rects []image.Rectangle) image.Image {
 
 	return bgImg
 }
-
-
 
 func CleanTileEdge(imgPath string, edge int) error {
 	img, _ := DecodePNGFromPath(imgPath)
@@ -368,7 +365,7 @@ func CleanTileEdge(imgPath string, edge int) error {
 func GetColorDistance(c1, c2 color.Color) float64 {
 	r1, g1, b1, _ := c1.RGBA()
 	r2, g2, b2, _ := c2.RGBA()
-	return math.Sqrt(math.Pow(float64(r1)-float64(r2), 2)+math.Pow(float64(g1)-float64(g2), 2)+math.Pow(float64(b1)-float64(b2), 2))
+	return math.Sqrt(math.Pow(float64(r1)-float64(r2), 2) + math.Pow(float64(g1)-float64(g2), 2) + math.Pow(float64(b1)-float64(b2), 2))
 }
 
 func GetCoverageRectSide(img image.Image, edge int) (image.Rectangle, error) {
