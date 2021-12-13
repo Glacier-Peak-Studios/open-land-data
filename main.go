@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
-	utils "glacierpeak.app/openland/pkg"
+	utils "glacierpeak.app/openland/pkg/utils"
 )
 
 func main() {

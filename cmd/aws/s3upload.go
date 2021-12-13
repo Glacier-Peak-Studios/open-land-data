@@ -15,7 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/schollz/progressbar/v3"
-	utils "glacierpeak.app/openland/pkg"
+	utils "glacierpeak.app/openland/pkg/utils"
 )
 
 func main() {

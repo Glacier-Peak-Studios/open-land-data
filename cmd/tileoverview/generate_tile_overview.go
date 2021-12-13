@@ -2,16 +2,12 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
 
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/rs/zerolog/pkgerrors"
-	"github.com/schollz/progressbar/v3"
-	utils "glacierpeak.app/openland/pkg"
+	"glacierpeak.app/openland/pkg/proc_runners"
+	"glacierpeak.app/openland/pkg/utils"
 )
 
 func main() {
@@ -26,23 +22,7 @@ func main() {
 		" 3 - Adds debug info and details more detail\n")
 	flag.Parse()
 
-	switch *verboseOpt {
-	case 0:
-		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
-		break
-	case 1:
-		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-		break
-	case 2:
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		break
-	case 3:
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-		zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-		break
-	default:
-		break
-	}
+	utils.SetupLogByLevel(*verboseOpt)
 
 	rng := strings.Split(*zRange, "-")
 	zMin, _ := strconv.Atoi(rng[0])
@@ -52,76 +32,17 @@ func main() {
 	}
 	log.Info().Msgf("Generating zoom from %v to %v", zMax, zMin)
 
-	CreateOverviewRange(zMax, zMin, *inDir, *workersOpt)
+	proc_runners.CreateOverviewRange(zMax, zMin, *inDir, *workersOpt)
 
 }
 
-func CreateOverviewRange(zMax int, zMin int, dir string, workers int) {
-	for i := zMax; i > zMin; i-- {
-		CreateOverview(filepath.Join(dir, strconv.Itoa(i)), workers)
-	}
-}
+// func logMsg(results chan<- string, source, msg string) {
+// 	toSend := source + ": " + msg
+// 	results <- toSend
+// }
 
-func CreateOverview(dir string, workers int) {
-	log.Warn().Msgf("Searching sources dir: %v", dir)
-	sources := utils.GetAllTiles2(dir, workers)
-	// sources, _ := utils.WalkMatch(dir, "*")
-	m := make(map[string]bool)
-	var overviews []string
-
-	for _, source := range sources {
-		over := utils.OverviewRoot(source)
-		tile, _ := utils.PathToTile(over)
-		if !m[tile.GetPathXY()] {
-			overviews = append(overviews, over)
-			m[tile.GetPathXY()] = true
-		}
-
-		// tileList = utils.AppendSetT(tileList, tile)
-	}
-
-	progBar := progressbar.NewOptions(len(overviews),
-		progressbar.OptionSetDescription(fmt.Sprintf("Generating overview for level %s...", dir)),
-		progressbar.OptionSetItsString("tiles"),
-		progressbar.OptionShowIts(),
-		progressbar.OptionSetPredictTime(true),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "=",
-			SaucerHead:    ">",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}),
-	)
-	// sources = utils.SetMap(sources, utils.OverviewRoot)
-
-	jobCount := len(overviews)
-	jobs := make(chan string, jobCount)
-	results := make(chan string, jobCount)
-
-	log.Warn().Msgf("Running with %v workers", workers)
-	for i := 0; i < workers; i++ {
-		go utils.OverviewWorker(jobs, results)
-	}
-	go queueSources(overviews, jobs)
-
-	for i := 0; i < jobCount; i++ {
-		var rst = <-results
-		log.Debug().Msg(rst)
-		progBar.Add(1)
-	}
-	close(jobs)
-	progBar.Finish()
-	log.Warn().Msg("Done with all jobs")
-}
-
-func logMsg(results chan<- string, source, msg string) {
-	toSend := source + ": " + msg
-	results <- toSend
-}
-
-func queueSources(sources []string, jobs chan<- string) {
-	for _, source := range sources {
-		jobs <- source
-	}
-}
+// func queueSources(sources []string, jobs chan<- string) {
+// 	for _, source := range sources {
+// 		jobs <- source
+// 	}
+// }

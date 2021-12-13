@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"net/http"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
+	"glacierpeak.app/openland/pkg/proc_mgmt"
+	"glacierpeak.app/openland/pkg/proc_runners"
 )
 
 func main() {
@@ -18,7 +19,8 @@ func main() {
 	// log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	// workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
-	logFileLoc := flag.String("src1", "./log.txt", "The root directory of the source files")
+	logFileLoc := flag.String("logfile", "./log.txt", "The root directory of the source files")
+	logToFile := flag.Bool("f", false, "Whether or not to log to file")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
 		" 0 - Only prints error messages\n"+
 		" 1 - Adds run specs and error details\n"+
@@ -27,14 +29,18 @@ func main() {
 	port := flag.String("p", "8080", "The port to listen on")
 	flag.Parse()
 
-	f, err := os.OpenFile(*logFileLoc, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Error().Msgf("error opening file: %v", err)
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	if *logToFile {
+		f, err := os.OpenFile(*logFileLoc, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Error().Msgf("error opening file: %v", err)
+			log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		} else {
+			log.Logger = log.Output(zerolog.ConsoleWriter{Out: f})
+		}
+		defer f.Close()
 	} else {
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: f})
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	}
-	defer f.Close()
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
@@ -57,21 +63,43 @@ func main() {
 
 	log.Info().Msg("Starting backend service")
 
-	currentProcesses := make([]Process, 0)
+	// currentProcesses := make([]Process, 0)
 
 	// port := os.Getenv("OLPORT")
 
+	processManager := proc_mgmt.NewProcessManager()
+
 	// Starts a new Gin instance with no middle-ware
 	r := gin.New()
-	setupGin(r, &currentProcesses)
+	setupGin(r, processManager)
+
+	go processManager.Start()
+	log.Printf("Started process manager")
+
+	mockTaskChain := proc_mgmt.NewOpenlandTaskChain("mockTaskChain")
+	toTiffExecutor := proc_runners.NewPDF2TIFFExecutor("./inDir", "./outDir", []string{"filt1", "filt2"}, "700", 4)
+	tilOverviewExecutor := proc_runners.NewMassTileMergeExecutor("./inDir", "./outDir", "17", 4)
+	mockTask1 := proc_mgmt.NewOpenlandTask("mockTask1", toTiffExecutor)
+	mockTask2 := proc_mgmt.NewOpenlandTask("mockTask2", tilOverviewExecutor)
+
+	mockTaskChain.AddTask(mockTask1)
+	mockTaskChain.AddTask(mockTask2)
+	processManager.Pause()
+	processManager.QueueTaskChain(mockTaskChain)
+	// processManager.AddTaskChain(mockTaskChain)
 
 	// Listen and serve on defined port
-	log.Printf("Listening on port %s", port)
+	log.Printf("Listening on port %s", *port)
 	r.Run(":" + *port)
 
 }
 
-func setupGin(r *gin.Engine, currentProcesses *[]Process) {
+type HandlerMap struct {
+	name     string
+	handlers []interface{}
+}
+
+func setupGin(r *gin.Engine, processManager *proc_mgmt.ProcessManager) {
 	// Define handlers
 	r.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello World!")
@@ -79,75 +107,41 @@ func setupGin(r *gin.Engine, currentProcesses *[]Process) {
 	r.GET("/ping", func(c *gin.Context) {
 		c.String(http.StatusOK, "pong")
 	})
-	r.POST("/newProcess", func(c *gin.Context) {
-		processName := c.Params.ByName("name")
-		var process Process
-		c.BindJSON(&process)
-		process.ID = len(*currentProcesses)
-		process.Status = "running"
-		process.Name = processName
-		*currentProcesses = append(*currentProcesses, process)
-
-		c.JSON(http.StatusCreated, process)
+	r.POST("/pause", func(c *gin.Context) {
+		processManager.Pause()
+		c.String(http.StatusOK, "Paused")
 	})
-
-	r.GET("/process/:id", func(c *gin.Context) {
-		id := c.Params.ByName("id")
+	r.POST("/resume", func(c *gin.Context) {
+		processManager.Resume()
+		c.String(http.StatusOK, "Resumed")
+	})
+	r.GET("/processQueue", func(c *gin.Context) {
+		queue := processManager.GetProcessQueue()
+		log.Info().Msgf("Process queue: %v", *queue)
+		c.JSON(http.StatusOK, queue)
+	})
+	r.GET("/queueHandlers", func(c *gin.Context) {
+		queue := processManager.GetProcessQueue()
+		tasks := make([]HandlerMap, 5)
+		for _, taskChain := range queue.ToExecute {
+			handlers := make([]interface{}, 5)
+			for _, task := range taskChain.Tasks {
+				handlers = append(handlers, task.Handler.Value())
+			}
+			tasks = append(tasks, HandlerMap{taskChain.Name, handlers})
+		}
+		// log.Info().Msgf("Process queue: %v", *queue)
+		c.JSON(http.StatusOK, tasks)
+	})
+	r.GET("/process:id", func(c *gin.Context) {
+		id := c.Param("id")
 		idInt, _ := strconv.Atoi(id)
-		process, err := getProcess(idInt, currentProcesses)
+		process, err := processManager.GetProcess(idInt)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{
-				"status":  "error",
-				"message": err.Error(),
-			})
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{
-			"status":  "success",
-			"message": "process found",
-			"process": process,
-		})
+		c.JSON(http.StatusOK, process)
 	})
 
-	r.POST("/end-process/:id", func(c *gin.Context) {
-		id := c.Params.ByName("id")
-		idInt, _ := strconv.Atoi(id)
-		err := removeProcess(idInt, currentProcesses)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{
-				"status":  "error",
-				"message": err.Error(),
-			})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"status":  "success",
-			"message": "process ended",
-		})
-	})
-}
-
-func removeProcess(id int, currentProcesses *[]Process) error {
-	for i, process := range *currentProcesses {
-		if process.ID == id {
-			*currentProcesses = append((*currentProcesses)[:i], (*currentProcesses)[i+1:]...)
-			return nil
-		}
-	}
-	return errors.New("process not found")
-}
-
-func getProcess(id int, currentProcesses *[]Process) (Process, error) {
-	for _, process := range *currentProcesses {
-		if process.ID == id {
-			return process, nil
-		}
-	}
-	return Process{}, errors.New("process not found")
-}
-
-type Process struct {
-	ID     int
-	Name   string
-	Status string
 }
