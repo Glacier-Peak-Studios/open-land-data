@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/schollz/progressbar/v3"
+	"glacierpeak.app/openland/pkg/proc_mgmt"
 	"glacierpeak.app/openland/pkg/utils"
 )
 
@@ -137,6 +138,10 @@ func (m *MassTileMergeExecutor) Run() {
 	MassTileMerge(m.setsDir, m.out, m.zLevel, m.workers)
 }
 
-func (m *MassTileMergeExecutor) Value() interface{} {
-	return &m
+func (m *MassTileMergeExecutor) Value() *proc_mgmt.ProcessExecutable {
+	return &proc_mgmt.ProcessExecutable{
+		Name: "MassTileMerge",
+		Args: []string{m.setsDir, m.out, m.zLevel, strconv.Itoa(m.workers)},
+		Run:  m.Run,
+	}
 }

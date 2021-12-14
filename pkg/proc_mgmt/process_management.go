@@ -17,10 +17,16 @@ const (
 
 type ProcessExecutor interface {
 	Run()
-	Value() interface{}
+	Value() *ProcessExecutable
 	// String() string
 	// Stop() error
 	// Status() ProcessState
+}
+
+type ProcessExecutable struct {
+	Name string
+	Args []string
+	Run  func()
 }
 
 // type ProcessExecutor interface{}
@@ -30,13 +36,13 @@ type OpenlandTask struct {
 	Pid     int
 	Status  string
 	State   ProcessState
-	Handler ProcessExecutor
+	Handler *ProcessExecutor
 }
 
 func NewOpenlandTask(name string, handler ProcessExecutor) *OpenlandTask {
 	return &OpenlandTask{
 		Name:    name,
-		Handler: handler,
+		Handler: &handler,
 	}
 }
 
@@ -67,18 +73,26 @@ func (chain *OpenlandTaskChain) Lock() {
 
 // basic queue implementation with enqueue and dequeue methods
 type ExecutionQueue struct {
-	ToExecute []*OpenlandTaskChain
+	toExecute []*OpenlandTaskChain
 }
 
 func (q *ExecutionQueue) Enqueue(process *OpenlandTaskChain) {
-	q.ToExecute = append(q.ToExecute, process)
+	q.toExecute = append(q.toExecute, process)
 }
 
 func (q *ExecutionQueue) Dequeue() *OpenlandTaskChain {
 	// remove the first process from the queue
-	process := q.ToExecute[0]
-	q.ToExecute = q.ToExecute[1:]
+	process := q.toExecute[0]
+	q.toExecute = q.toExecute[1:]
 	return process
+}
+
+func (q *ExecutionQueue) Len() int {
+	return len(q.toExecute)
+}
+
+func (q *ExecutionQueue) Items() []*OpenlandTaskChain {
+	return q.toExecute
 }
 
 type ProcessManager struct {
@@ -113,7 +127,7 @@ func (pm *ProcessManager) AddProcess(name string, handler ProcessExecutor) {
 	// create process hash from name and pid
 	task := &OpenlandTask{
 		Name:    name,
-		Handler: handler,
+		Handler: &handler,
 		Pid:     pid,
 	}
 
@@ -144,7 +158,7 @@ func (pm *ProcessManager) RunTaskChain(pid int) {
 	for _, task := range process.Tasks {
 
 		task.State = ProcessState_Running
-		task.Handler.Run()
+		(*task.Handler).Run()
 		task.State = ProcessState_Finished
 	}
 	delete(pm.Processes, pid)
@@ -169,14 +183,14 @@ func (pm *ProcessManager) GetProcessQueue() *ExecutionQueue {
 }
 
 func (pm *ProcessManager) AddProcessToQueue(process *OpenlandTaskChain) {
-	pm.Queue.ToExecute = append(pm.Queue.ToExecute, process)
+	pm.Queue.Enqueue(process)
 }
 
 // get process and add it to queue
 
 func (pm *ProcessManager) Start() {
 	for {
-		if !pm.paused && len(pm.Queue.ToExecute) > 0 && pm.ProcessCount < pm.ConcurrentProcesses {
+		if !pm.paused && pm.Queue.Len() > 0 && pm.ProcessCount < pm.ConcurrentProcesses {
 			process := pm.Queue.Dequeue()
 			pm.Processes[process.Pid] = process
 			pm.ProcessCount++

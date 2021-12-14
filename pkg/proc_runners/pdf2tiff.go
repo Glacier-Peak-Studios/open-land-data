@@ -1,7 +1,11 @@
 package proc_runners
 
 import (
+	"fmt"
+	"strconv"
+
 	"github.com/rs/zerolog/log"
+	"glacierpeak.app/openland/pkg/proc_mgmt"
 	"glacierpeak.app/openland/pkg/utils"
 )
 
@@ -51,8 +55,12 @@ func NewPDF2TIFFExecutor(inDir string, outDir string, filterLayers []string, dpi
 	return &PDF2TIFFExecutor{inDir, outDir, filterLayers, dpi, workers}
 }
 
-func (m *PDF2TIFFExecutor) Value() interface{} {
-	return &m
+func (m *PDF2TIFFExecutor) Value() *proc_mgmt.ProcessExecutable {
+	return &proc_mgmt.ProcessExecutable{
+		Name: "PDF2TIFF",
+		Run:  m.Run,
+		Args: []string{m.inDir, m.outDir, fmt.Sprintf("%v", m.filterLayers), m.dpi, strconv.Itoa(m.workers)},
+	}
 }
 
 // run function to run this executor

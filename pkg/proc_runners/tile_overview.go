@@ -7,6 +7,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/schollz/progressbar/v3"
+	"glacierpeak.app/openland/pkg/proc_mgmt"
 	"glacierpeak.app/openland/pkg/utils"
 )
 
@@ -80,8 +81,17 @@ func NewCreateOverviewRangeExecutor(zMax int, zMin int, dir string, workers int)
 	return &CreateOverviewRangeExecutor{zMax, zMin, dir, workers}
 }
 
-func (m *CreateOverviewRangeExecutor) Value() interface{} {
-	return &m
+func (e *CreateOverviewRangeExecutor) Value() *proc_mgmt.ProcessExecutable {
+	return &proc_mgmt.ProcessExecutable{
+		Name: "CreateOverviewRange",
+		Args: []string{
+			strconv.Itoa(e.ZMax),
+			strconv.Itoa(e.ZMin),
+			e.Dir,
+			strconv.Itoa(e.Workers),
+		},
+		Run: e.Run,
+	}
 }
 
 func (e *CreateOverviewRangeExecutor) Run() {

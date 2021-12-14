@@ -96,7 +96,7 @@ func main() {
 
 type HandlerMap struct {
 	name     string
-	handlers []interface{}
+	handlers []*proc_mgmt.ProcessExecutable
 }
 
 func setupGin(r *gin.Engine, processManager *proc_mgmt.ProcessManager) {
@@ -122,15 +122,21 @@ func setupGin(r *gin.Engine, processManager *proc_mgmt.ProcessManager) {
 	})
 	r.GET("/queueHandlers", func(c *gin.Context) {
 		queue := processManager.GetProcessQueue()
-		tasks := make([]HandlerMap, 5)
-		for _, taskChain := range queue.ToExecute {
-			handlers := make([]interface{}, 5)
+		tasks := make([]*HandlerMap, 0)
+
+		for _, taskChain := range queue.Items() {
+			handlers := make([]*proc_mgmt.ProcessExecutable, 0)
 			for _, task := range taskChain.Tasks {
-				handlers = append(handlers, task.Handler.Value())
+				handlerVal := (*task.Handler).Value()
+				log.Printf("Handler value: %v", *handlerVal)
+				handlers = append(handlers, handlerVal)
 			}
-			tasks = append(tasks, HandlerMap{taskChain.Name, handlers})
+			toAdd := &HandlerMap{taskChain.Name, handlers}
+			log.Printf("Adding: %v", toAdd)
+			tasks = append(tasks, toAdd)
 		}
-		// log.Info().Msgf("Process queue: %v", *queue)
+		log.Info().Msgf("Process queue: %v", len(tasks))
+
 		c.JSON(http.StatusOK, tasks)
 	})
 	r.GET("/process:id", func(c *gin.Context) {
