@@ -2,7 +2,6 @@ package proc_runners
 
 import (
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -12,8 +11,10 @@ import (
 
 func FixBackground(dir string, out string, workers int, zLvl string) {
 	m := make(map[string]bool)
-	// sources, _ := utils.WalkMatch(dir, "*.png")
-	sources := utils.GetAllTiles2(filepath.Join(dir, zLvl), workers)
+	sources, _ := utils.WalkMatch(dir, "*.png")
+	// get directory listing.
+	// files, _ :=
+	// sources := utils.GetAllTiles2(filepath.Join(dir, zLvl), workers)
 	var tileList []utils.Tile
 
 	for _, source := range sources {
@@ -72,6 +73,10 @@ func NewFixBackgroundExecutor(dir string, out string, zLvl string) *FixBackgroun
 
 func (m *FixBackgroundExecutor) Value() string {
 	return fmt.Sprintf("FixBackground: In:%s, Out:%s, ZLvl:%s", m.Dir, m.Out, m.ZLvl)
+}
+
+func (c *FixBackgroundExecutor) Args() []string {
+	return []string{"dir", "out", "zlvl"}
 }
 
 func (fbe *FixBackgroundExecutor) Run() {
