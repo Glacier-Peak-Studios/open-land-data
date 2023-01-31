@@ -11,16 +11,24 @@ import (
 )
 
 func main() {
+	flag.Usage = utils.CliUsage("generate_tile_overview",
+		`This is a tool for creating various overview zoom levels from a base tileset.
+		It takes in a tileset and a range of zoom levels (where the largest zoom in the range
+		is the zoom of the curren ttileset), and generates sucessively "zoomed out" tile sets.
+		Ex: a zoom range of "2-17" would assume the input tileset was generated at a level 17,
+		and it wouuld generate tilesets at zoom levels 2-16.`)
 
-	workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
+	workersOpt := flag.Int("t", 4, "The number of concurrent jobs being processed")
 	inDir := flag.String("i", "", "The root directory of the source files")
-	zRange := flag.String("z", "17", "Zoom levels to generate. (Ex. \"2-16\") Must start with current zoom level")
+	zRange := flag.String("z", "", "Zoom levels to generate. (Ex. \"2-17\") Must start with current zoom level")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+
 		" 0 - Only prints error messages\n"+
 		" 1 - Adds run specs and error details\n"+
 		" 2 - Adds general progress info\n"+
 		" 3 - Adds debug info and details more detail\n")
 	flag.Parse()
+
+	utils.CheckRequiredFlags("i", "z")
 
 	utils.SetupLogByLevel(*verboseOpt)
 

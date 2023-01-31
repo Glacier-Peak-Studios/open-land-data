@@ -9,6 +9,12 @@ import (
 
 func main() {
 
+	flag.Usage = utils.CliUsage("pdf2tiff",
+		`This is a tool that runs gdal's 'pdf2tiff' command in a parallelized way. 
+		It takes in a directory of PDF files and outputs a direcotry of
+		converted TIFF files. You can specify the number of parallel instances of
+		this conversion, as well as the DPI of the TIFF files.`)
+
 	workersOpt := flag.Int("t", 4, "The number of concurrent jobs being processed")
 	outDir := flag.String("o", "./", "Folder to output the tiff files")
 	inDir := flag.String("i", "./", "Folder with the pdf files")
@@ -20,6 +26,8 @@ func main() {
 		" 2 - Adds general progress info\n"+
 		" 3 - Adds debug info and details more detail\n")
 	flag.Parse()
+
+	utils.CheckRequiredFlags("i", "o")
 
 	utils.SetupLogByLevel(*verboseOpt)
 

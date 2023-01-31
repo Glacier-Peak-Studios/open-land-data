@@ -6,13 +6,19 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/rs/zerolog/pkgerrors"
 	utils "glacierpeak.app/openland/pkg/utils"
 )
 
 func main() {
+	flag.Usage = utils.CliUsage("land_sources",
+		`This tool reads sources from a directory structure of .json files.
+		On generation, it copies the sources directory structure, and each .json becomes a useable generated file.
+		By default, no sources are included in this project. To obtain sources to convert:
+		[(1) For the last stable set of sources, visit the json sources repo. This can be dropped into this project at the root level.
+		(2) For the very latest sources (still being audited), visit the sources doc, download as a .csv, and convert to json.]
+		
+		To convert sources from .csv to json, and vise versa, run ./sourcemgr.py`)
 
 	workersOpt := flag.Int("t", 4, "The number of concurrent jobs being processed")
 	sourceDirOpt := flag.String("src", "./land-sources", "The root directory of the source files")
@@ -25,26 +31,7 @@ func main() {
 	startNewOpt := flag.Bool("f", false, "Force generation of all sources, overwriting those existing")
 	flag.Parse()
 
-	switch *verboseOpt {
-	case 0:
-		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
-		// log.SetLevel(log.ErrorLevel)
-		break
-	case 1:
-		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-		// log.SetLevel(log.WarnLevel)
-		break
-	case 2:
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		break
-	case 3:
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-		zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-		// log.SetReportCaller(true)
-		break
-	default:
-		break
-	}
+	utils.SetupLogByLevel(*verboseOpt)
 
 	if *startNewOpt {
 		err := os.RemoveAll("./generated")
