@@ -6,9 +6,16 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
 	"glacierpeak.app/openland/pkg/proc_runners"
+	"glacierpeak.app/openland/pkg/utils"
 )
 
 func main() {
+	flag.Usage = utils.CliUsage("fixbackground",
+		`This is a tool for fixing the background at the edge of tile sets.
+		It looks at the edges of the tilets in order to get rid of any white borders
+		that start in the middle of a tile. It converts all white borders to be transparent.
+		It then saves this fixed tileset to the specified output directory.
+		Note: 'cleanup_tiles' should be run prior to running this command`)
 
 	workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
 	inDir := flag.String("i", "", "The root directory of the source files")
@@ -21,6 +28,8 @@ func main() {
 		" 2 - Adds general progress info\n"+
 		" 3 - Adds debug info and details more detail\n")
 	flag.Parse()
+
+	utils.CheckRequiredFlags("i", "o")
 
 	switch *verboseOpt {
 	case 0:
