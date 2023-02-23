@@ -20,7 +20,7 @@ func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
-	workersOpt := flag.Int("t", 4, "The number of concurrent jobs being processed")
+	workersOpt := flag.Int("t", utils.GetDefaultWorkers(), "The number of concurrent jobs being processed")
 	src1 := flag.String("src1", "", "The root directory of the source files")
 	src2 := flag.String("src2", "", "The root directory of the source files")
 	massMerge := flag.Bool("m", false, "Merge all tilesets in a given directory (ignores -src2 flag)")

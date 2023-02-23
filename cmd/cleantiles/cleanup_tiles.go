@@ -15,7 +15,7 @@ func main() {
 		It removes all files and directories outside of these bounds.
 		Note: this should be run prior to the 'fixbackground' command`)
 
-	workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
+	workersOpt := flag.Int("t", utils.GetDefaultWorkers(), "The number of concurrent jobs being processed")
 	zoomLvl := flag.Int("z", 17, "Zoom level of the tileset to clean")
 	inDir := flag.String("i", "", "Folder with the pdf files")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+

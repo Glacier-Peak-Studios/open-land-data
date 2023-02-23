@@ -19,7 +19,7 @@ import (
 )
 
 func main() {
-	workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
+	workersOpt := flag.Int("t", utils.GetDefaultWorkers(), "The number of concurrent jobs being processed")
 	uploadDir := flag.String("i", "", "Directory to upload files from")
 	region := flag.String("r", "us-west-2", "Region of the s3 bucket")
 	bucket := flag.String("b", "gp.us.general", "Name of the bucket to upload tiles to")

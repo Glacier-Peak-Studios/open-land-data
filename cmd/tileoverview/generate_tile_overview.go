@@ -18,7 +18,7 @@ func main() {
 		Ex: a zoom range of "2-17" would assume the input tileset was generated at a level 17,
 		and it wouuld generate tilesets at zoom levels 2-16.`)
 
-	workersOpt := flag.Int("t", 4, "The number of concurrent jobs being processed")
+	workersOpt := flag.Int("t", utils.GetDefaultWorkers(), "The number of concurrent jobs being processed")
 	inDir := flag.String("i", "", "The root directory of the source files")
 	zRange := flag.String("z", "", "Zoom levels to generate. (Ex. \"2-17\") Must start with current zoom level")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+

@@ -17,7 +17,7 @@ func main() {
 		It then saves this fixed tileset to the specified output directory.
 		Note: 'cleanup_tiles' should be run prior to running this command`)
 
-	workersOpt := flag.Int("t", 1, "The number of concurrent jobs being processed")
+	workersOpt := flag.Int("t", utils.GetDefaultWorkers(), "The number of concurrent jobs being processed")
 	inDir := flag.String("i", "", "The root directory of the source files")
 	outDir := flag.String("o", "", "The output directory of the source files")
 	zLevel := flag.String("z", "17", "Z level of tiles to process")

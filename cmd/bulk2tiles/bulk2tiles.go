@@ -14,7 +14,7 @@ func main() {
 			and then converts the VRT files into tiles at a specified zoom level and number of worker processes (threads).
 			The tool outputs the tile sets into a specified output directory.`)
 
-	workersOpt := flag.Int("t", 4, "The number of concurrent jobs being processed")
+	workersOpt := flag.Int("t", utils.GetDefaultWorkers(), "The number of concurrent jobs being processed")
 	zoomLvl := flag.Int("z", 17, "Zoom level to create tiles at")
 	inDir := flag.String("i", "", "Folder with the .tif files")
 	outDir := flag.String("o", "", "Folder to output the tiles files")

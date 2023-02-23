@@ -20,7 +20,7 @@ func main() {
 		
 		To convert sources from .csv to json, and vise versa, run ./sourcemgr.py`)
 
-	workersOpt := flag.Int("t", 4, "The number of concurrent jobs being processed")
+	workersOpt := flag.Int("t", utils.GetDefaultWorkers(), "The number of concurrent jobs being processed")
 	sourceDirOpt := flag.String("src", "./land-sources", "The root directory of the source files")
 	cleanupOpt := flag.Bool("nc", false, "Don't clean up the zip files and folders in the generated directories")
 	verboseOpt := flag.Int("v", 1, "Set the verbosity level:\n"+

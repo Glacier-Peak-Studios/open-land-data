@@ -15,7 +15,7 @@ func main() {
 		converted TIFF files. You can specify the number of parallel instances of
 		this conversion, as well as the DPI of the TIFF files.`)
 
-	workersOpt := flag.Int("t", 4, "The number of concurrent jobs being processed")
+	workersOpt := flag.Int("t", utils.GetDefaultWorkers(), "The number of concurrent jobs being processed")
 	outDir := flag.String("o", "./", "Folder to output the tiff files")
 	inDir := flag.String("i", "./", "Folder with the pdf files")
 	filterFile := flag.String("f", "./keepLayers.txt", "File containing layers to include when converting")
