@@ -42,7 +42,7 @@ func main() {
 	println("Reading in file", *in)
 	filterLayers := utils.ReadInFilterList(*in)
 	allLayers := utils.ReadInFilterList(*in2)
-	filteredLayers := utils.Filter2(allLayers, filterLayers, utils.RemoveLayer)
+	filteredLayers := utils.FilterByList(allLayers, filterLayers, utils.RemoveLayer)
 	println("Printing filtered layers:")
 
 	for _, layer := range filteredLayers {

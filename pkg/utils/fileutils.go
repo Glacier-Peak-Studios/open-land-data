@@ -84,29 +84,6 @@ func WalkMatch(root string, pattern string) ([]string, error) {
 	return matches, nil
 }
 
-func WalkRecursive(root string, workers int) []string {
-	jobs := make(chan string, 500)
-	filesRet := make(chan string, 200)
-
-	var workersDone uint64
-	dirCount := uint64(1)
-	workersTotal := uint64(workers)
-
-	var tileList []string
-
-	for i := 0; i < workers; i++ {
-		go FileFinder(jobs, filesRet, &workersDone, workersTotal, &dirCount)
-	}
-
-	jobs <- root
-
-	for tileFile := range filesRet {
-		tileList = append(tileList, tileFile)
-	}
-
-	return tileList
-}
-
 func GetAllTiles2(root string, workers int) []string {
 
 	dirsList, err := ioutil.ReadDir(root)
@@ -190,64 +167,6 @@ func GetAllTilesStreamed(root string, workerCount int, foundTiles chan<- string)
 	// }
 
 	// return tileList
-
-}
-
-func GetAllTiles(root string, workers int) (map[string][]string, []Tile) {
-	dirsList, err := ioutil.ReadDir(root)
-	if err != nil {
-		log.Error().Err(err).Msg("Error reading sources list")
-	}
-
-	jobCount := len(dirsList)
-	log.Debug().Msgf("Making job channel of length %v", jobCount)
-	jobs := make(chan string, jobCount)
-	filesRet := make(chan string, 30)
-
-	var workersDone uint64
-	workersTotal := uint64(workers)
-
-	// var tileList []string
-
-	for i := 0; i < workers; i++ {
-		go TilesetListWorker(jobs, filesRet, &workersDone, workersTotal)
-	}
-
-	for _, dir := range dirsList {
-		if dir.IsDir() {
-			jobs <- filepath.Join(root, dir.Name(), "17")
-		}
-	}
-	log.Debug().Msg("Done queing folder list, closing channel")
-	close(jobs)
-
-	m := make(map[string][]string)
-	// m := make(map[int][]string)
-	var tileList []Tile
-
-	for tileFile := range filesRet {
-		tile, base := PathToTile(tileFile)
-		tileXY := tile.GetPathXY()
-		// tXYInt := tile.GetXYInt()
-		tSources := m[tileXY]
-		// tSources := m[tXYInt]
-		if tSources == nil {
-			tileList = append(tileList, tile)
-			lenTL := len(tileList)
-			if lenTL%10000000 == 0 {
-				log.Debug().Msgf("Length of tileList is now %v", lenTL)
-			}
-		}
-		tSources = append(tSources, base)
-		m[tileXY] = tSources
-		// m[tXYInt] = tSources
-		lenMap := len(m)
-		if lenMap%100000 == 0 {
-			log.Debug().Msgf("Length of map is now %v", lenMap)
-		}
-	}
-
-	return m, tileList
 
 }
 
@@ -364,23 +283,6 @@ func BBoxFromTileset(path string) (BBox, error) {
 
 	return BBx(tsOrigin, tsExtent), nil
 }
-
-func CleanBBoxEdge(b BBox, side string, basepath string, zoom int) {
-	// var err error = nil
-	sideNum := SideToNum(side)
-	for ix := b.Origin().X; ix <= b.Extent().X; ix++ {
-		for iy := b.Origin().Y; iy <= b.Extent().Y; iy++ {
-			tile := Tile{X: ix, Y: iy, Z: zoom}
-			imgFile := filepath.Join(basepath, tile.GetPath()+".png")
-			CleanTileEdge(imgFile, sideNum)
-			// err = os.Remove(imgFile)
-		}
-	}
-}
-
-// func GetTrimBBox(file string, curBBox BBox) BBox {
-
-// }
 
 func GetGeoPDFLayers(file string) []string {
 	out, err := RunCommand(CmdOpts{Silent: true}, "gdalinfo", "-mdd", "LAYERS", file)

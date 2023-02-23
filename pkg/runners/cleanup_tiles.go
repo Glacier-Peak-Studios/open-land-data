@@ -13,10 +13,10 @@ import (
 
 func CleanupTiles(inDir string, zoomLvl int, workers int) {
 	files, _ := ioutil.ReadDir(inDir)
-	files = utils.FilterFI(files, func(file os.FileInfo) bool {
+	files = utils.Filter(files, func(file os.FileInfo) bool {
 		return file.IsDir()
 	})
-	sources := utils.MapFI(files, func(file os.FileInfo) string {
+	sources := utils.Map(files, func(file os.FileInfo) string {
 		return filepath.Join(inDir, file.Name())
 	})
 

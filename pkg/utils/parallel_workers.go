@@ -20,7 +20,7 @@ func PDF2TiffWorker(jobs <-chan string, results chan<- string, filterList []stri
 		println("-> Job -", job)
 		pdfLayers := GetGeoPDFLayers(job)
 
-		pdfLayers = Filter2(pdfLayers, filterList, LayerFilter)
+		pdfLayers = FilterByList(pdfLayers, filterList, LayerFilter)
 		rmLayers := strings.Join(pdfLayers[:], ",")
 		args := append(constArgs, "--config", "GDAL_PDF_LAYERS", rmLayers)
 
@@ -49,30 +49,6 @@ func LayerFilter(layer string, filterList []string) bool {
 		}
 	}
 	return false
-
-	// if strings.HasPrefix(layer, "Quadrangle.Neatline") {
-	// 	return false
-	// }
-	// if strings.HasPrefix(layer, "Quadrangle.2_5") {
-	// 	return false
-	// }
-	// if strings.HasPrefix(layer, "Quadrangle_Ext") {
-	// 	return false
-	// }
-	// if strings.HasPrefix(layer, "Adjacent") {
-	// 	return false
-	// }
-	// if strings.HasPrefix(layer, "Other") {
-	// 	return false
-	// }
-	// if strings.HasPrefix(layer, "Quadrangle.UTM") {
-	// 	return false
-	// }
-	// if strings.HasPrefix(layer, "Ownership") {
-	// 	return false
-	// }
-
-	// return true
 }
 
 func RemoveLayer(layer string, filterList []string) bool {
@@ -363,67 +339,6 @@ func TilesetListWorker(jobs <-chan string, results chan<- string, workersDone *u
 	if atomic.LoadUint64(workersDone) == workerCount {
 		close(results)
 	}
-}
-
-func FileFinder(jobs chan string, results chan<- string, workersDone *uint64, workerCount uint64, foldersToRead *uint64) {
-	// defer wg.Done()
-	for atomic.LoadUint64(foldersToRead) != 0 || len(jobs) != 0 {
-		job := <-jobs
-		dirListing, err := ioutil.ReadDir(job)
-		// println("DirLength:", len(dirListing))
-		if err != nil {
-			log.Error().Err(err).Msgf("Could not read z dir: %v", job)
-		} else {
-			newDirs := 0
-			for _, listing := range dirListing {
-				if listing.IsDir() {
-					newDirs++
-					jobs <- filepath.Join(job, listing.Name())
-					// println("DIR LISTING:", listing.Name())
-				} else {
-					results <- filepath.Join(job, listing.Name())
-					// println("FILE LISTING:", listing.Name())
-				}
-			}
-			// println("adding to dirCount:", newDirs)
-			atomic.AddUint64(foldersToRead, uint64(newDirs))
-			dcCur := atomic.LoadUint64(foldersToRead)
-			if dcCur != uint64(0) {
-				// println("removing from dirCount")
-				atomic.AddUint64(foldersToRead, ^uint64(0))
-			}
-
-		}
-		// dcCur := atomic.LoadUint64(foldersToRead)
-		// println("dirCount is now:", dcCur)
-	}
-	close(jobs)
-	atomic.AddUint64(workersDone, ^uint64(0))
-	if atomic.LoadUint64(workersDone) == 0 {
-		close(results)
-	}
-
-	// for job := range jobs {
-
-	// 	dirListing, err := ioutil.ReadDir(job)
-	// 	if err != nil {
-	// 		log.Error().Err(err).Msgf("Could not read z dir: %v", job)
-	// 	} else {
-	// 		for _, listing := range dirListing {
-	// 			if listing.IsDir() {
-	// 				atomic.AddUint64(workersDone, ^uint64(0))
-
-	// 			} else {
-	// 				go FileFinder()
-	// 			}
-	// 		}
-	// 	}
-
-	// }
-	// atomic.AddUint64(workersDone, ^uint64(0))
-	// if atomic.LoadUint64(workersDone) == 0 {
-	// 	close(results)
-	// }
 }
 
 func TilesetListWorkerStreamed(searchDirs <-chan string, filesFound chan<- string, workersDone *uint64, workerCount uint64) {

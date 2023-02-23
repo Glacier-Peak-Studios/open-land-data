@@ -225,48 +225,6 @@ func ImgOverRects(img image.Image, rects []image.Rectangle) image.Image {
 	return bgImg
 }
 
-func CleanTileEdge(imgPath string, edge int) error {
-	img, _ := DecodePNGFromPath(imgPath)
-	x, y := 0, 0
-	pxRng := IntRange(0, 256)
-	if edge%2 == 0 {
-		pxRng = IntRange(256, 0)
-	}
-	outer := &x
-	inner := &y
-	if edge > 1 {
-		outer = &y
-		inner = &x
-	}
-
-	size := img.Bounds().Max
-	m := image.NewRGBA(image.Rect(0, 0, size.X, size.Y))
-
-	for *outer = range pxRng {
-		colorCount := 0
-		for *inner = range pxRng {
-			pxCol := img.At(x, y)
-			if pxCol != WHITE && !pixelIsTransparent(pxCol) {
-				colorCount++
-			}
-		}
-		for *inner = range pxRng {
-			pxCol := img.At(x, y)
-			if colorCount == 0 {
-				m.Set(x, y, TRANSPARENT)
-			} else {
-				m.Set(x, y, pxCol)
-			}
-		}
-	}
-
-	os.Remove(imgPath)
-
-	err := EncodePNGToPath(imgPath, m)
-	return err
-
-}
-
 func GetCoverageRectSide(img image.Image, edge int) (image.Rectangle, error) {
 	// img, _ := decodePNGFromPath(imgPath)
 	pxWhiteTolerance := 0.1
