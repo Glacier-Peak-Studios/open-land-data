@@ -1,4 +1,4 @@
-package proc_runners
+package runners
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/schollz/progressbar/v3"
-	"glacierpeak.app/openland/pkg/proc_mgmt"
+	"glacierpeak.app/openland/pkg/management"
 	"glacierpeak.app/openland/pkg/utils"
 )
 
@@ -81,8 +81,8 @@ func NewCreateOverviewRangeExecutor(zMax int, zMin int, dir string, workers int)
 	return &CreateOverviewRangeExecutor{zMax, zMin, dir, workers}
 }
 
-func (e *CreateOverviewRangeExecutor) Value() *proc_mgmt.ProcessExecutable {
-	return &proc_mgmt.ProcessExecutable{
+func (e *CreateOverviewRangeExecutor) Value() *management.ProcessExecutable {
+	return &management.ProcessExecutable{
 		Name: "CreateOverviewRange",
 		Args: []string{
 			strconv.Itoa(e.ZMax),

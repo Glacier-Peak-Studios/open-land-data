@@ -23,17 +23,13 @@ func main() {
 	switch *verboseOpt {
 	case 0:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
-		break
 	case 1:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-		break
 	case 2:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		break
 	case 3:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-		break
 	default:
 		break
 	}

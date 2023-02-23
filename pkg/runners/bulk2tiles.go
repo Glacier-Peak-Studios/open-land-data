@@ -1,4 +1,5 @@
-package proc_runners
+// Package runners contains the code to run map operation processes
+package runners
 
 import (
 	"path/filepath"

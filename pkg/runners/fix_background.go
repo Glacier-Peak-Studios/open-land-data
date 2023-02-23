@@ -1,4 +1,4 @@
-package proc_runners
+package runners
 
 import (
 	"fmt"
@@ -71,11 +71,11 @@ func NewFixBackgroundExecutor(dir string, out string, zLvl string) *FixBackgroun
 	return &FixBackgroundExecutor{dir, out, zLvl}
 }
 
-func (m *FixBackgroundExecutor) Value() string {
-	return fmt.Sprintf("FixBackground: In:%s, Out:%s, ZLvl:%s", m.Dir, m.Out, m.ZLvl)
+func (fbe *FixBackgroundExecutor) Value() string {
+	return fmt.Sprintf("FixBackground: In:%s, Out:%s, ZLvl:%s", fbe.Dir, fbe.Out, fbe.ZLvl)
 }
 
-func (c *FixBackgroundExecutor) Args() []string {
+func (fbe *FixBackgroundExecutor) Args() []string {
 	return []string{"dir", "out", "zlvl"}
 }
 

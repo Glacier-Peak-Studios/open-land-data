@@ -22,16 +22,12 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-func dirExists(filename string) bool {
+func DirExists(filename string) bool {
 	info, err := os.Stat(filename)
 	if os.IsNotExist(err) {
 		return false
 	}
 	return info.IsDir()
-}
-
-func DirEx(filename string) bool {
-	return dirExists(filename)
 }
 
 func getFnameOnly(file string) string {
@@ -46,16 +42,12 @@ func StripExt(file string) string {
 	return filename[0 : len(filename)-len(extension)]
 }
 
-func fileToStr(file string) string {
+func FileToStr(file string) string {
 	content, err := ioutil.ReadFile(file)
 	if err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 	return string(content)
-}
-
-func FtoStr(file string) string {
-	return fileToStr(file)
 }
 
 func getPropFromJSON(prop string, strJSON string) string {
@@ -117,25 +109,22 @@ func WalkRecursive(root string, workers int) []string {
 
 func GetAllTiles2(root string, workers int) []string {
 
-	
 	dirsList, err := ioutil.ReadDir(root)
 	if err != nil {
 		log.Error().Err(err).Msg("Error reading sources list")
 	}
 
-	gatherTilesBar := progressbar.NewOptions(-1, 
+	gatherTilesBar := progressbar.NewOptions(-1,
 		progressbar.OptionSetDescription("Gathering tiles"),
 		progressbar.OptionSetItsString("tiles"),
 		progressbar.OptionShowIts(),
 		progressbar.OptionThrottle(1*time.Second),
-		progressbar.OptionSpinnerType(14),	
-
+		progressbar.OptionSpinnerType(14),
 	)
 
 	jobCount := len(dirsList)
 	jobs := make(chan string, jobCount)
 	filesRet := make(chan string, 200)
-
 
 	var workersDone uint64
 	workersTotal := uint64(workers)
@@ -245,7 +234,7 @@ func GetAllTiles(root string, workers int) (map[string][]string, []Tile) {
 		if tSources == nil {
 			tileList = append(tileList, tile)
 			lenTL := len(tileList)
-			if lenTL % 10000000 == 0 {
+			if lenTL%10000000 == 0 {
 				log.Debug().Msgf("Length of tileList is now %v", lenTL)
 			}
 		}
@@ -253,7 +242,7 @@ func GetAllTiles(root string, workers int) (map[string][]string, []Tile) {
 		m[tileXY] = tSources
 		// m[tXYInt] = tSources
 		lenMap := len(m)
-		if lenMap % 100000 == 0 {
+		if lenMap%100000 == 0 {
 			log.Debug().Msgf("Length of map is now %v", lenMap)
 		}
 	}
@@ -267,16 +256,13 @@ func GetAllTiles0(root string, zLvl string, workers int) (map[int][]string, []Ti
 	if err != nil {
 		log.Error().Err(err).Msg("Error reading sources list")
 	}
-	gatherTilesBar := progressbar.NewOptions(-1, 
+	gatherTilesBar := progressbar.NewOptions(-1,
 		progressbar.OptionSetDescription("Gathering tiles to merge"),
 		progressbar.OptionSetItsString("tiles"),
 		progressbar.OptionShowIts(),
 		progressbar.OptionThrottle(1*time.Second),
-		progressbar.OptionSpinnerType(14),	
-
+		progressbar.OptionSpinnerType(14),
 	)
-
-	
 
 	jobCount := len(dirsList)
 	log.Debug().Msgf("Making job channel of length %v", jobCount)
@@ -309,7 +295,7 @@ func GetAllTiles0(root string, zLvl string, workers int) (map[int][]string, []Ti
 		if tSources == nil {
 			tileList = append(tileList, tile)
 			lenTL := len(tileList)
-			if lenTL % 10000000 == 0 {
+			if lenTL%10000000 == 0 {
 				log.Debug().Msgf("Number of tiles is now %v", lenTL)
 			}
 		}
@@ -333,10 +319,10 @@ func CleanJob(job string) error {
 	}
 	for i := 0; i < len(zipfiles); i++ {
 		log.Debug().Msg("Removing zipfile: " + zipfiles[i])
-		err = os.Remove(zipfiles[i])
+		_ = os.Remove(zipfiles[i])
 		folder := outdir + "/" + getFnameOnly(zipfiles[i])
 		log.Debug().Msgf("Removing folder: %v", folder)
-		err = os.RemoveAll(folder)
+		_ = os.RemoveAll(folder)
 	}
 	kmzfiles, err := WalkMatch(outdir, "*.kmz")
 	if err != nil {
@@ -360,7 +346,7 @@ func BBoxFromTileset(path string) (BBox, error) {
 
 	x0Path := filepath.Join(path, x0)
 	x1Path := filepath.Join(path, x1)
-	x0ListY, err := ioutil.ReadDir(x0Path)
+	x0ListY, _ := ioutil.ReadDir(x0Path)
 	x1ListY, err := ioutil.ReadDir(x1Path)
 	if err != nil {
 		log.Error().Msg("Couldn't read source dir")
@@ -413,10 +399,10 @@ func GetGeoPDFLayers(file string) []string {
 
 func ReadInFilterList(file string) []string {
 	dat, err := ioutil.ReadFile(file)
-	if (err != nil) {
+	if err != nil {
 		fmt.Print(err)
 	}
-  return strings.Fields(string(dat))
+	return strings.Fields(string(dat))
 	// return {""}
 }
 

@@ -95,7 +95,7 @@ func downloadFTP(path string, u *url.URL) (string, error) {
 func downloadBox(path, boxpath string) (string, error) {
 	boxdir, exists := os.LookupEnv("BOXPATH")
 	if !exists {
-		return "", errors.New("Failed to fetch box source: BOXPATH env not set")
+		return "", errors.New("failed to fetch box source: BOXPATH env not set")
 	}
 	log.Debug().Msgf("BOXPATH=%v", boxdir)
 	pathIn := strings.Replace(boxpath, "box://", "file://"+boxdir+"/", 1)

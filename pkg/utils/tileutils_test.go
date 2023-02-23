@@ -19,7 +19,6 @@ func TestGetPath(t *testing.T) {
 	}
 }
 
-
 func TestPathToTile(t *testing.T) {
 	testTile := Tile{X: 1, Y: 2, Z: 3}
 	testBasepath := "/path/to/tile"
@@ -43,7 +42,7 @@ func TestNewPoint(t *testing.T) {
 		t.Error("NewPoint did not return the correct point")
 	}
 
-	verifyPoint, err := NewPoint("bob", "sammy")
+	_, err := NewPoint("bob", "sammy")
 
 	if err == nil {
 		t.Error("NewPoint should have returned an error")

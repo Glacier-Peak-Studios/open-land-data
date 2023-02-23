@@ -16,7 +16,7 @@ func ProcessSource(dir string, file string) error {
 	// 	fmt.Println("Time to debug!")
 	// }
 	pathedFile := dir + "/" + file
-	sourceJSON := fileToStr(pathedFile)
+	sourceJSON := FileToStr(pathedFile)
 	sourceURL := getPropFromJSON("url", sourceJSON)
 	dlPath := strings.Replace(dir, "land-sources", "generated", 1)
 	dlurl, _ := url.Parse(sourceURL)
@@ -32,7 +32,7 @@ func ProcessSource(dir string, file string) error {
 	}
 	if filepath.Ext(dlFile) == ".zip" {
 		dlPath = dlPath + "/" + getFnameOnly(dlFile)
-		if !dirExists(dlPath) {
+		if !DirExists(dlPath) {
 			_, err := RunCommand(true, "unzip", "-j", dlFile, "-d", dlPath)
 			if err != nil {
 				return err
@@ -115,7 +115,7 @@ func processShp(path, filename, fileOutName string) error {
 		}
 		if len(shapefiles) > 1 {
 			log.Debug().Msgf("shapefiles-in-dir: %v", shapefiles)
-			return errors.New("Multiple shapefiles in zip, none specified in source")
+			return errors.New("multiple shapefiles in zip, none specified in source")
 		}
 		if len(shapefiles) == 0 {
 			return errors.New("No shapefiles in folder: " + path)
@@ -152,7 +152,7 @@ func processKml(path, filename, fileOutName string) error {
 		}
 		if len(kmlfiles) > 1 {
 			log.Debug().Msgf("kmlfiles-in-dir: %v", kmlfiles)
-			return errors.New("Multiple kmlfiles in zip, none specified in source")
+			return errors.New("multiple kmlfiles in zip, none specified in source")
 		}
 		if len(kmlfiles) == 0 {
 			return errors.New("No kmlfiles in folder: " + path)
@@ -189,7 +189,7 @@ func processKmz(path, filename, fileOutName string) error {
 		}
 		if len(kmzfiles) > 1 {
 			log.Debug().Msgf("kmzfiles-in-dir: %v", kmzfiles)
-			return errors.New("Multiple kmzfiles in zip, none specified in source")
+			return errors.New("multiple kmzfiles in zip, none specified in source")
 		}
 		if len(kmzfiles) == 0 {
 			return errors.New("No kmzfiles in folder: " + path)
@@ -197,7 +197,7 @@ func processKmz(path, filename, fileOutName string) error {
 		filename = filepath.Base(kmzfiles[0])
 	}
 	folderPath := path + "/" + getFnameOnly(filename)
-	if !dirExists(folderPath) {
+	if !DirExists(folderPath) {
 		_, err := RunCommand(true, "unzip", "-j", path+"/"+filename, "-d", folderPath)
 		if err != nil {
 			return err

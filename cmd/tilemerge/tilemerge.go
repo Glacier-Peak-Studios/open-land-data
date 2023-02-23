@@ -6,7 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"glacierpeak.app/openland/pkg/proc_runners"
+	"glacierpeak.app/openland/pkg/runners"
 	"glacierpeak.app/openland/pkg/utils"
 )
 
@@ -38,9 +38,9 @@ func main() {
 	utils.SetupLogByLevel(*verboseOpt)
 
 	if *massMerge {
-		proc_runners.MassTileMerge(*src1, *outDir, *zLevel, *workersOpt)
+		runners.MassTileMerge(*src1, *outDir, *zLevel, *workersOpt)
 	} else {
-		proc_runners.TileMerge(*src1, *src2, *outDir, *workersOpt)
+		runners.TileMerge(*src1, *src2, *outDir, *workersOpt)
 	}
 
 }

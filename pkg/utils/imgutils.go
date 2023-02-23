@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
+	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
@@ -14,64 +15,7 @@ import (
 )
 
 var WHITE = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
-var TRANSP = color.NRGBA{R: 0, G: 0, B: 0, A: 0}
-var TRANSP2 = color.NRGBA{R: 255, G: 255, B: 255, A: 0}
-
-// var bgWidth, bgHeight = 256, 256
-// var bgImg = image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
-
-var TOP_LEFT_BOUNDS = image.Rect(0, 0, 256, 256)
-var TOP_RIGHT_BOUNDS = image.Rect(256, 0, 512, 256)
-var BTM_LEFT_BOUNDS = image.Rect(0, 256, 256, 512)
-var BTM_RIGHT_BOUNDS = image.Rect(256, 256, 512, 512)
-
-func CombineImages(img1 string, img2 string, outImg string) error {
-	imgFile1, err := os.Open(img1)
-	if err != nil {
-		log.Error().Msg("Could not open img1")
-		return err
-	}
-	defer imgFile1.Close()
-	imgFile2, err := os.Open(img2)
-	if err != nil {
-		log.Error().Msg("Could not open img2")
-		return err
-	}
-	defer imgFile2.Close()
-	img1D, err := png.Decode(imgFile1)
-	if err != nil {
-		log.Error().Msg("Could not decode img1")
-		return err
-	}
-	img2D, err := png.Decode(imgFile2)
-	if err != nil {
-		log.Error().Msg("Could not decode img2")
-		return err
-	}
-
-	bgWidth, bgHeight := 256, 256
-	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
-
-	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{color.White}, image.Point{}, draw.Src)
-
-	draw.Draw(bgImg, img1D.Bounds(), img1D, image.Point{}, draw.Over)
-	draw.Draw(bgImg, img2D.Bounds(), img2D, image.Point{}, draw.Over)
-
-	out, err := os.Create(outImg)
-	if err != nil {
-		log.Error().Msg("Could not create output image")
-		return err
-	}
-	defer out.Close()
-	// var opt jpeg.Options
-	// opt.Quality = 80
-	// err = jpeg.Encode(out, bgImg, &opt)
-	err = png.Encode(out, bgImg)
-	if err != nil {
-		log.Error().Msg("Could not encode output image")
-	}
-	return err
-}
+var TRANSPARENT = color.NRGBA{R: 0, G: 0, B: 0, A: 0}
 
 // GenerateOverviewTile takes in 4 image paths
 // and creates a quad layout image of size 512x512.
@@ -80,18 +24,18 @@ func CombineImages(img1 string, img2 string, outImg string) error {
 // | img1 | img2 |
 //
 // | img3 | img4 |
-func GenerateOverviewTile(outName string, img1 string, img2 string, img3 string, img4 string) error {
-	imgLocs := []string{img1, img2, img3, img4}
+func GenerateOverviewTile(imgOutPath, img1Path, img2Path, img3Path, img4Path string) error {
+	imgPaths := []string{img1Path, img2Path, img3Path, img4Path}
 	imgRefs := make([]image.Image, 4)
-	for i, imgLoc := range imgLocs {
-		img, err := os.Open(imgLoc)
+	for i, imgPath := range imgPaths {
+		img, err := os.Open(imgPath)
 		if err != nil {
 			defer img.Close()
 		}
 		var imgDec image.Image
 		if err != nil {
-			log.Debug().Msgf("Could not open image, using white: %v", imgLoc)
-			imgDec = image.NewUniform(TRANSP)
+			log.Debug().Msgf("Could not open image, using white: %v", imgPath)
+			imgDec = image.NewUniform(TRANSPARENT)
 		} else {
 			imgDec, _ = png.Decode(img)
 		}
@@ -100,78 +44,29 @@ func GenerateOverviewTile(outName string, img1 string, img2 string, img3 string,
 
 	bgWidth, bgHeight := 512, 512
 	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
-	// draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{color.White}, image.Point{}, draw.Src)
-	if imgRefs[0] != nil {
-		draw.Draw(bgImg, image.Rect(0, 0, 256, 256), imgRefs[0], image.Point{}, draw.Over)
-	}
-	if imgRefs[1] != nil {
-		draw.Draw(bgImg, image.Rect(256, 0, 512, 256), imgRefs[1], image.Point{}, draw.Over)
-	}
-	if imgRefs[2] != nil {
-		draw.Draw(bgImg, image.Rect(0, 256, 256, 512), imgRefs[2], image.Point{}, draw.Over)
-	}
-	if imgRefs[3] != nil {
-		draw.Draw(bgImg, image.Rect(256, 256, 512, 512), imgRefs[3], image.Point{}, draw.Over)
-	}
 
-	imgOut := resize.Resize(256, 256, bgImg, resize.NearestNeighbor)
+	imgSize := 256
+	for i, imgRef := range imgRefs {
+		if imgRef != nil {
+			rect := image.Rect((i%2)*imgSize, (i/2)*imgSize, (i%2+1)*imgSize, (i/2+1)*imgSize)
+			draw.Draw(bgImg, rect, imgRef, image.Point{}, draw.Over)
 
-	os.MkdirAll(filepath.Dir(outName), 0755)
-	err := EncodePNGToPath(outName, imgOut)
-
-	return err
-
-}
-
-// MergeNTiles takes a list of image paths and produces a direct
-// composite output of these images to outImg path with a transparent
-// background
-func MergeNTiles(imgPaths []string, outImg string) error {
-	imgRefs := make([]image.Image, len(imgPaths))
-	for i, imgPath := range imgPaths {
-		img, err := DecodePNGFromPath(imgPath)
-		if err != nil {
-			log.Debug().Msgf("Could not open image, using transparent: %v", imgPath)
-			img = image.NewUniform(TRANSP)
 		}
-		imgRefs[i] = img
 	}
 
-	bgWidth, bgHeight := 256, 256
-	bgImg := image.NewRGBA(image.Rect(0, 0, bgWidth, bgHeight))
+	imgOut := resize.Resize(uint(imgSize), uint(imgSize), bgImg, resize.NearestNeighbor)
 
-	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{TRANSP}, image.Point{}, draw.Src)
+	var perms fs.FileMode = 0755 // read/execute all, write owner
+	os.MkdirAll(filepath.Dir(imgOutPath), perms)
+	err := EncodePNGToPath(imgOutPath, imgOut)
 
-	for _, img := range imgRefs {
-		draw.Draw(bgImg, img.Bounds(), img, image.Point{}, draw.Over)
-	}
-
-	err := EncodePNGToPath(outImg, bgImg)
-	return err
-}
-
-// MergeNTiles2 takes a list of image paths and produces a direct
-// composite output of these images to outImg path with a transparent
-// background
-func MergeNTiles2(imgPaths []string, outImg string) error {
-	bgImg := image.NewRGBA(image.Rect(0, 0, 256, 256))
-	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{TRANSP}, image.Point{}, draw.Src)
-	for _, imgPath := range imgPaths {
-		img, err := DecodePNGFromPath(imgPath)
-		if err != nil {
-			log.Debug().Msgf("Could not open image, using transparent: %v", imgPath)
-			img = image.NewUniform(TRANSP)
-		}
-		draw.Draw(bgImg, img.Bounds(), img, image.Point{}, draw.Over)
-	}
-	err := EncodePNGToPath(outImg, bgImg)
 	return err
 }
 
 func MergeNTiles0(imgPaths []string, tile Tile, basePath string, outImg string) error {
 	whiteTolerance := 0.1
 	bgImg := image.NewRGBA(image.Rect(0, 0, 256, 256))
-	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{TRANSP2}, image.Point{}, draw.Src)
+	draw.Draw(bgImg, bgImg.Bounds(), &image.Uniform{TRANSPARENT}, image.Point{}, draw.Src)
 	for _, imgPath := range imgPaths {
 		base := basePath + imgPath
 		imgPathWBase := appendTileToBase(base, tile) + ".png"
@@ -233,9 +128,9 @@ func MergeTiles(img1 string, img2 string, outImg string) error {
 	return err
 }
 
+// GetPixelPercent calculates the percentage makeup of a specific color in a given image
 func GetPixelPercent(img image.Image, col color.Color) float64 {
 	countColor := 0
-	// bounds := img.
 	size := img.Bounds().Max
 	for y := 0; y < size.Y; y++ {
 		for x := 0; x < size.X; x++ {
@@ -248,7 +143,7 @@ func GetPixelPercent(img image.Image, col color.Color) float64 {
 	return float64(countColor) / float64(size.X*size.Y)
 }
 
-func canDeleteImg(imgPath string) bool {
+func isImgWhiteOrTransparent(imgPath string) bool {
 	img, err := DecodePNGFromPath(imgPath)
 	if err != nil {
 		return false
@@ -266,6 +161,13 @@ func canDeleteImg(imgPath string) bool {
 	return notWhiteCount == 0
 }
 
+// GetColorDistance computes the distance between two colors
+func GetColorDistance(c1, c2 color.Color) float64 {
+	r1, g1, b1, _ := c1.RGBA()
+	r2, g2, b2, _ := c2.RGBA()
+	return math.Sqrt(math.Pow(float64(r1)-float64(r2), 2) + math.Pow(float64(g1)-float64(g2), 2) + math.Pow(float64(b1)-float64(b2), 2))
+}
+
 func pixelIsTransparent(col color.Color) bool {
 	_, _, _, a := col.RGBA()
 	return a == 0
@@ -280,6 +182,8 @@ func pixelIsWhite(col color.Color, tolerance float64) bool {
 	return percentDiff < tolerance
 }
 
+// Checks if an image contains all transparent
+// pixels
 func imgIsTransparent(img image.Image) bool {
 	size := img.Bounds().Max
 	for y := 0; y < size.Y; y++ {
@@ -293,6 +197,8 @@ func imgIsTransparent(img image.Image) bool {
 	return true
 }
 
+// Checks if an image contains all white
+// pixels within a certain tolerance
 func imgIsWhite(img image.Image, tolerance float64) bool {
 	size := img.Bounds().Max
 	for y := 0; y < size.Y; y++ {
@@ -347,7 +253,7 @@ func CleanTileEdge(imgPath string, edge int) error {
 		for *inner = range pxRng {
 			pxCol := img.At(x, y)
 			if colorCount == 0 {
-				m.Set(x, y, TRANSP)
+				m.Set(x, y, TRANSPARENT)
 			} else {
 				m.Set(x, y, pxCol)
 			}
@@ -359,13 +265,6 @@ func CleanTileEdge(imgPath string, edge int) error {
 	err := EncodePNGToPath(imgPath, m)
 	return err
 
-}
-
-// function that computes the distance between two colors
-func GetColorDistance(c1, c2 color.Color) float64 {
-	r1, g1, b1, _ := c1.RGBA()
-	r2, g2, b2, _ := c2.RGBA()
-	return math.Sqrt(math.Pow(float64(r1)-float64(r2), 2) + math.Pow(float64(g1)-float64(g2), 2) + math.Pow(float64(b1)-float64(b2), 2))
 }
 
 func GetCoverageRectSide(img image.Image, edge int) (image.Rectangle, error) {
@@ -463,16 +362,16 @@ func GetCoverageRectCorner(img image.Image, corner int) ([]image.Rectangle, erro
 
 }
 
-// func checkImgLine()
-
-func ReplaceColor(img image.Image, col color.Color, repl color.Color) image.Image {
+// ReplaceColor finds all pixels in an image that matches a specific color,
+// and replace them with another color
+func ReplaceColor(img image.Image, find, replace color.Color) image.Image {
 	size := img.Bounds().Max
 	m := image.NewRGBA(image.Rect(0, 0, size.X, size.Y))
 	for y := 0; y < size.Y; y++ {
 		for x := 0; x < size.X; x++ {
 			pxCol := img.At(x, y)
-			if pxCol == col {
-				m.Set(x, y, repl)
+			if pxCol == find {
+				m.Set(x, y, replace)
 			} else {
 				m.Set(x, y, pxCol)
 			}

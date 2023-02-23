@@ -1,7 +1,7 @@
+// Package utils contains various algorithms and functions to aid in map processing
 package utils
 
 import (
-	"fmt"
 	"image"
 	"io/ioutil"
 	"os"
@@ -19,7 +19,6 @@ func PDF2TiffWorker(jobs <-chan string, results chan<- string, filterList []stri
 		// jobSplit := strings.Split(job, " ")
 		println("-> Job -", job)
 		pdfLayers := GetGeoPDFLayers(job)
-
 
 		pdfLayers = Filter2(pdfLayers, filterList, LayerFilter)
 		rmLayers := strings.Join(pdfLayers[:], ",")
@@ -142,39 +141,6 @@ func TilesetMergeWorker(jobs <-chan string, results chan<- string, ts1Dir string
 	}
 }
 
-func TilesetMergeWorker2(jobs <-chan Tile, results chan<- string, locations map[string][]string, outDir string) {
-	for job := range jobs {
-		curTile := job
-		outImg := filepath.Join(outDir, curTile.GetPath()) + ".png"
-		if !fileExists(outImg) {
-
-			os.MkdirAll(filepath.Dir(outImg), 0755)
-
-			tileLocs := locations[curTile.GetPathXY()]
-
-			vsf := make([]string, 0)
-			for _, v := range tileLocs {
-				vF := appendTileToBase(v, curTile) + ".png"
-				vsf = append(vsf, vF)
-			}
-			tileLocs = vsf
-
-			var err error = nil
-			if len(tileLocs) > 1 {
-				err = MergeNTiles(tileLocs, outImg)
-			} else if len(tileLocs) == 1 {
-				err = os.Link(tileLocs[0], outImg)
-			}
-			if err != nil {
-				log.Error().Err(err).Msgf("Error creating output tile: %v", outImg)
-			}
-			logMsg(results, outImg, "Done.")
-		} else {
-			logMsg(results, outImg, "Already exists, done.")
-		}
-	}
-}
-
 func TilesetMergeWorker0(jobs <-chan Tile, results chan<- string, locations map[int][]string, outDir string, inDir string, mapLock *sync.RWMutex) {
 	for job := range jobs {
 		curTile := job
@@ -198,7 +164,7 @@ func TilesetMergeWorker0(jobs <-chan Tile, results chan<- string, locations map[
 			// tileLocs = vsf
 
 			var err error = nil
-			
+
 			if len(tileLocs) > 1 {
 				err = MergeNTiles0(tileLocs, curTile, inDir, outImg)
 			} else if len(tileLocs) == 1 {
@@ -402,7 +368,7 @@ func TilesetListWorker(jobs <-chan string, results chan<- string, workersDone *u
 func FileFinder(jobs chan string, results chan<- string, workersDone *uint64, workerCount uint64, foldersToRead *uint64) {
 	// defer wg.Done()
 	for atomic.LoadUint64(foldersToRead) != 0 || len(jobs) != 0 {
-		job, _ := <-jobs
+		job := <-jobs
 		dirListing, err := ioutil.ReadDir(job)
 		// println("DirLength:", len(dirListing))
 		if err != nil {
@@ -460,10 +426,6 @@ func FileFinder(jobs chan string, results chan<- string, workersDone *uint64, wo
 	// }
 }
 
-func fileFinderRecurse(dir string, results chan<- string, workersDone *uint64) {
-
-}
-
 func TilesetListWorkerStreamed(searchDirs <-chan string, filesFound chan<- string, workersDone *uint64, workerCount uint64) {
 	// defer wg.Done()
 	for dir := range searchDirs {
@@ -488,79 +450,6 @@ func TilesetListWorkerStreamed(searchDirs <-chan string, filesFound chan<- strin
 	atomic.AddUint64(workersDone, 1)
 	if atomic.LoadUint64(workersDone) == workerCount {
 		close(filesFound)
-	}
-}
-
-const fstopoArc = "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_FSTopo_01/MapServer/tile"
-
-func VectorMergeWorker(jobs <-chan string, results chan<- string) {
-	for job := range jobs {
-		var err error = nil
-		// print(job)
-		// curDir := filepath.Dir(job)
-		curTile, basedir := PathToTile(job)
-
-		y := StripExt(filepath.Base(job))
-
-		// fdir := filepath.Dir(job)
-		// x := filepath.Base(fdir)
-		// fdir = filepath.Dir(fdir)
-		// z := filepath.Base(fdir)
-		// fdir = filepath.Dir(fdir)
-
-		// zxy := z + "/" + x + "/" + y
-		zx := curTile.getPathZX()
-
-		// baseFolder := fdir + "/" + zx
-		topoFolder := basedir + "-topo/" + zx
-		outFolder := basedir + "-merged/" + zx
-		baseImg := job
-		topoImg := topoFolder + "/" + y + "-topo.png"
-		outImg := outFolder + "/" + y + ".png"
-		// fmt.Printf("(x, y, z) - (%v, %v, %v)\n", x, y, z)
-
-		// if fileExists(baseImg) {
-		// 	os.Remove(job)
-		// 	os.Rename(baseImg, job)
-		// }
-
-		vecturl := fmt.Sprintf("%v/%v/%v/%v", fstopoArc, curTile.Z, curTile.Y, curTile.X)
-		// println(vecturl)
-
-		topoDownloaded := true
-		if !fileExists(topoImg) {
-			dlTopoFolder := topoFolder + "/" + y + "-temp"
-			// print("DLLoc:", dlLoc)
-			_, err = DownloadFile(dlTopoFolder, vecturl)
-			if err != nil {
-				log.Error().Msgf("Failed to download file - %v", err.Error())
-				os.Remove(dlTopoFolder)
-				topoDownloaded = false
-				os.Link(baseImg, outImg)
-			} else {
-				dlTopo := dlTopoFolder + "/" + strconv.Itoa(curTile.X)
-				os.Rename(dlTopo, topoImg)
-				os.Remove(dlTopoFolder)
-			}
-		} else {
-			log.Info().Msg("Topo tile already downloaded, using cached version")
-		}
-		if topoDownloaded {
-
-			err = os.MkdirAll(filepath.Dir(outImg), 0755)
-			if err != nil {
-				log.Error().Msgf("Failed to create output dir - %v", err.Error())
-			} else {
-				err = CombineImages(baseImg, topoImg, outImg)
-			}
-
-		}
-		if err != nil {
-			logMsg(results, job, err.Error())
-		} else {
-			logMsg(results, outImg, "Job done")
-		}
-
 	}
 }
 

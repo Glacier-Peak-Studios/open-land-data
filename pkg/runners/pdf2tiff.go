@@ -1,11 +1,11 @@
-package proc_runners
+package runners
 
 import (
 	"fmt"
 	"strconv"
 
 	"github.com/rs/zerolog/log"
-	"glacierpeak.app/openland/pkg/proc_mgmt"
+	"glacierpeak.app/openland/pkg/management"
 	"glacierpeak.app/openland/pkg/utils"
 )
 
@@ -55,15 +55,15 @@ func NewPDF2TIFFExecutor(inDir string, outDir string, filterLayers []string, dpi
 	return &PDF2TIFFExecutor{inDir, outDir, filterLayers, dpi, workers}
 }
 
-func (m *PDF2TIFFExecutor) Value() *proc_mgmt.ProcessExecutable {
-	return &proc_mgmt.ProcessExecutable{
+func (p2te *PDF2TIFFExecutor) Value() *management.ProcessExecutable {
+	return &management.ProcessExecutable{
 		Name: "PDF2TIFF",
-		Run:  m.Run,
-		Args: []string{m.inDir, m.outDir, fmt.Sprintf("%v", m.filterLayers), m.dpi, strconv.Itoa(m.workers)},
+		Run:  p2te.Run,
+		Args: []string{p2te.inDir, p2te.outDir, fmt.Sprintf("%v", p2te.filterLayers), p2te.dpi, strconv.Itoa(p2te.workers)},
 	}
 }
 
-// run function to run this executor
-func (e *PDF2TIFFExecutor) Run() {
-	PDF2TIFF(e.inDir, e.outDir, e.filterLayers, e.dpi, e.workers)
+// Run is a function to run this executor
+func (p2te *PDF2TIFFExecutor) Run() {
+	PDF2TIFF(p2te.inDir, p2te.outDir, p2te.filterLayers, p2te.dpi, p2te.workers)
 }

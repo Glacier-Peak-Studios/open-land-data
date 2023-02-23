@@ -1,4 +1,4 @@
-package proc_runners
+package runners
 
 import (
 	"io/ioutil"
@@ -87,10 +87,10 @@ func NewCleanTilesExecutor(inDir string, zoomLvl int, workers int) *CleanTilesEx
 	}
 }
 
-func (m *CleanTilesExecutor) Value() interface{} {
-	return &m
+func (cte *CleanTilesExecutor) Value() interface{} {
+	return &cte
 }
 
-func (c *CleanTilesExecutor) Run() {
-	CleanupTiles(c.inDir, c.zoomLvl, c.workers)
+func (cte *CleanTilesExecutor) Run() {
+	CleanupTiles(cte.inDir, cte.zoomLvl, cte.workers)
 }

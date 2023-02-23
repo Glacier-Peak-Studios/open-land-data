@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"glacierpeak.app/openland/pkg/proc_runners"
+	"glacierpeak.app/openland/pkg/runners"
 	utils "glacierpeak.app/openland/pkg/utils"
 )
 
@@ -40,7 +40,7 @@ func main() {
 
 	filterLayers := utils.ReadInFilterList(*filterFile)
 
-	proc_runners.PDF2TIFF(*inDir, *outDir, filterLayers, *dpi, *workersOpt)
+	runners.PDF2TIFF(*inDir, *outDir, filterLayers, *dpi, *workersOpt)
 
 	// // rmlayers := "\"" + utils.FtoStr("rmlayers.txt") + "\""
 
