@@ -73,24 +73,24 @@ func queueCTSources(sources []string, jobs chan<- string) {
 	progBar.Finish()
 }
 
-type CleanTilesExecutor struct {
-	inDir   string
-	zoomLvl int
-	workers int
-}
+// type CleanTilesExecutor struct {
+// 	inDir   string
+// 	zoomLvl int
+// 	workers int
+// }
 
-func NewCleanTilesExecutor(inDir string, zoomLvl int, workers int) *CleanTilesExecutor {
-	return &CleanTilesExecutor{
-		inDir:   inDir,
-		zoomLvl: zoomLvl,
-		workers: workers,
-	}
-}
+// func NewCleanTilesExecutor(inDir string, zoomLvl int, workers int) *CleanTilesExecutor {
+// 	return &CleanTilesExecutor{
+// 		inDir:   inDir,
+// 		zoomLvl: zoomLvl,
+// 		workers: workers,
+// 	}
+// }
 
-func (cte *CleanTilesExecutor) Value() interface{} {
-	return &cte
-}
+// func (cte *CleanTilesExecutor) Value() interface{} {
+// 	return &cte
+// }
 
-func (cte *CleanTilesExecutor) Run() {
-	CleanupTiles(cte.inDir, cte.zoomLvl, cte.workers)
-}
+// func (cte *CleanTilesExecutor) Run() {
+// 	CleanupTiles(cte.inDir, cte.zoomLvl, cte.workers)
+// }

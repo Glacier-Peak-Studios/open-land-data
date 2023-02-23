@@ -1,11 +1,7 @@
 package runners
 
 import (
-	"fmt"
-	"strconv"
-
 	"github.com/rs/zerolog/log"
-	"glacierpeak.app/openland/pkg/management"
 	"glacierpeak.app/openland/pkg/utils"
 )
 
@@ -43,27 +39,27 @@ func queueSources(sources []string, jobs chan<- string) {
 	}
 }
 
-type PDF2TIFFExecutor struct {
-	inDir        string
-	outDir       string
-	filterLayers []string
-	dpi          string
-	workers      int
-}
+// type PDF2TIFFExecutor struct {
+// 	inDir        string
+// 	outDir       string
+// 	filterLayers []string
+// 	dpi          string
+// 	workers      int
+// }
 
-func NewPDF2TIFFExecutor(inDir string, outDir string, filterLayers []string, dpi string, workers int) *PDF2TIFFExecutor {
-	return &PDF2TIFFExecutor{inDir, outDir, filterLayers, dpi, workers}
-}
+// func NewPDF2TIFFExecutor(inDir string, outDir string, filterLayers []string, dpi string, workers int) *PDF2TIFFExecutor {
+// 	return &PDF2TIFFExecutor{inDir, outDir, filterLayers, dpi, workers}
+// }
 
-func (p2te *PDF2TIFFExecutor) Value() *management.ProcessExecutable {
-	return &management.ProcessExecutable{
-		Name: "PDF2TIFF",
-		Run:  p2te.Run,
-		Args: []string{p2te.inDir, p2te.outDir, fmt.Sprintf("%v", p2te.filterLayers), p2te.dpi, strconv.Itoa(p2te.workers)},
-	}
-}
+// func (p2te *PDF2TIFFExecutor) Value() *management.ProcessExecutable {
+// 	return &management.ProcessExecutable{
+// 		Name: "PDF2TIFF",
+// 		Run:  p2te.Run,
+// 		Args: []string{p2te.inDir, p2te.outDir, fmt.Sprintf("%v", p2te.filterLayers), p2te.dpi, strconv.Itoa(p2te.workers)},
+// 	}
+// }
 
-// Run is a function to run this executor
-func (p2te *PDF2TIFFExecutor) Run() {
-	PDF2TIFF(p2te.inDir, p2te.outDir, p2te.filterLayers, p2te.dpi, p2te.workers)
-}
+// // Run is a function to run this executor
+// func (p2te *PDF2TIFFExecutor) Run() {
+// 	PDF2TIFF(p2te.inDir, p2te.outDir, p2te.filterLayers, p2te.dpi, p2te.workers)
+// }

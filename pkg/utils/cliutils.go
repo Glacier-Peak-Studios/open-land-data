@@ -9,6 +9,7 @@ import (
 	"golang.org/x/term"
 )
 
+// CheckRequiredFlags checks if all flags requred to be passed are passed
 func CheckRequiredFlags(required ...string) {
 	seen := make(map[string]bool)
 	flag.Visit(func(f *flag.Flag) { seen[f.Name] = true })
@@ -21,6 +22,8 @@ func CheckRequiredFlags(required ...string) {
 	}
 }
 
+// CliUsage prints out a formatted usage message for a
+// program with a given title and description
 func CliUsage(title, description string) func() {
 	return func() {
 		printString := wrapString(description, 80)

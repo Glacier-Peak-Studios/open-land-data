@@ -11,7 +11,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
 	"glacierpeak.app/openland/pkg/management"
-	"glacierpeak.app/openland/pkg/runners"
 )
 
 func main() {
@@ -77,13 +76,13 @@ func main() {
 	log.Printf("Started process manager")
 
 	mockTaskChain := management.NewOpenlandTaskChain("mockTaskChain")
-	toTiffExecutor := runners.NewPDF2TIFFExecutor("./inDir", "./outDir", []string{"filt1", "filt2"}, "700", 4)
-	tilOverviewExecutor := runners.NewMassTileMergeExecutor("./inDir", "./outDir", "17", 4)
-	mockTask1 := management.NewOpenlandTask("mockTask1", toTiffExecutor)
-	mockTask2 := management.NewOpenlandTask("mockTask2", tilOverviewExecutor)
+	// toTiffExecutor := runners.NewPDF2TIFFExecutor("./inDir", "./outDir", []string{"filt1", "filt2"}, "700", 4)
+	// tilOverviewExecutor := runners.NewMassTileMergeExecutor("./inDir", "./outDir", "17", 4)
+	// mockTask1 := management.NewOpenlandTask("mockTask1", toTiffExecutor)
+	// mockTask2 := management.NewOpenlandTask("mockTask2", tilOverviewExecutor)
 
-	mockTaskChain.AddTask(mockTask1)
-	mockTaskChain.AddTask(mockTask2)
+	// mockTaskChain.AddTask(mockTask1)
+	// mockTaskChain.AddTask(mockTask2)
 	processManager.Pause()
 	processManager.QueueTaskChain(mockTaskChain)
 	// processManager.AddTaskChain(mockTaskChain)

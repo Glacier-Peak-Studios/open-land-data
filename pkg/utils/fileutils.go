@@ -383,7 +383,7 @@ func CleanBBoxEdge(b BBox, side string, basepath string, zoom int) {
 // }
 
 func GetGeoPDFLayers(file string) []string {
-	out, err := RunCommand(true, "gdalinfo", "-mdd", "LAYERS", file)
+	out, err := RunCommand(CmdOpts{Silent: true}, "gdalinfo", "-mdd", "LAYERS", file)
 	log.Err(err).Msg("Quering gdalinfo for layers")
 	lines := strings.Split(out, "\n")
 	var layers []string

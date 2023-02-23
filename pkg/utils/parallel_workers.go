@@ -31,7 +31,7 @@ func PDF2TiffWorker(jobs <-chan string, results chan<- string, filterList []stri
 		argList := strings.Join(args, " ")
 		println(cmd, argList)
 		if !fileExists(fout) {
-			out, err := RunCommand2(true, false, cmd, args...)
+			out, err := RunCommand(CmdOpts{Silent: true}, cmd, args...)
 			log.Err(err).Msg(out)
 		} else {
 			log.Info().Msg("File exists, skipping")
