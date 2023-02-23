@@ -1,4 +1,4 @@
-package proc_runners
+package runners
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/schollz/progressbar/v3"
-	"glacierpeak.app/openland/pkg/proc_mgmt"
 	"glacierpeak.app/openland/pkg/utils"
 )
 
@@ -70,30 +69,30 @@ func CreateOverview(dir string, workers int) {
 	log.Warn().Msg("Done with all jobs")
 }
 
-type CreateOverviewRangeExecutor struct {
-	ZMax    int
-	ZMin    int
-	Dir     string
-	Workers int
-}
+// type CreateOverviewRangeExecutor struct {
+// 	ZMax    int
+// 	ZMin    int
+// 	Dir     string
+// 	Workers int
+// }
 
-func NewCreateOverviewRangeExecutor(zMax int, zMin int, dir string, workers int) *CreateOverviewRangeExecutor {
-	return &CreateOverviewRangeExecutor{zMax, zMin, dir, workers}
-}
+// func NewCreateOverviewRangeExecutor(zMax int, zMin int, dir string, workers int) *CreateOverviewRangeExecutor {
+// 	return &CreateOverviewRangeExecutor{zMax, zMin, dir, workers}
+// }
 
-func (e *CreateOverviewRangeExecutor) Value() *proc_mgmt.ProcessExecutable {
-	return &proc_mgmt.ProcessExecutable{
-		Name: "CreateOverviewRange",
-		Args: []string{
-			strconv.Itoa(e.ZMax),
-			strconv.Itoa(e.ZMin),
-			e.Dir,
-			strconv.Itoa(e.Workers),
-		},
-		Run: e.Run,
-	}
-}
+// func (e *CreateOverviewRangeExecutor) Value() *management.ProcessExecutable {
+// 	return &management.ProcessExecutable{
+// 		Name: "CreateOverviewRange",
+// 		Args: []string{
+// 			strconv.Itoa(e.ZMax),
+// 			strconv.Itoa(e.ZMin),
+// 			e.Dir,
+// 			strconv.Itoa(e.Workers),
+// 		},
+// 		Run: e.Run,
+// 	}
+// }
 
-func (e *CreateOverviewRangeExecutor) Run() {
-	CreateOverviewRange(e.ZMax, e.ZMin, e.Dir, e.Workers)
-}
+// func (e *CreateOverviewRangeExecutor) Run() {
+// 	CreateOverviewRange(e.ZMax, e.ZMin, e.Dir, e.Workers)
+// }

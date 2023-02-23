@@ -1,3 +1,4 @@
+// Package service does nothing currently
 package service
 
 // type OpenlandArgument interface {
@@ -16,9 +17,9 @@ package service
 // 	return o.Args[pos]
 // }
 
-// func ExecutorFromName(name string, args ...OpenlandArgument) (proc_mgmt.ProcessExecutor, error) {
+// func ExecutorFromName(name string, args ...OpenlandArgument) (management.ProcessExecutor, error) {
 // 	switch name {
 // 	case "cleanup_tiles":
-// 		return proc_runners.NewCleanTilesExecutor(args[0].String(), args[1].Int(), args[2].Int())
+// 		return runners.NewCleanTilesExecutor(args[0].String(), args[1].Int(), args[2].Int())
 // 	}
 // }

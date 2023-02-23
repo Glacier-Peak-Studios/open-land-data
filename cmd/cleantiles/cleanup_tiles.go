@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"glacierpeak.app/openland/pkg/proc_runners"
+	"glacierpeak.app/openland/pkg/runners"
 	"glacierpeak.app/openland/pkg/utils"
 )
 
@@ -27,6 +27,6 @@ func main() {
 	utils.CheckRequiredFlags("i")
 
 	utils.SetupLogByLevel(*verboseOpt)
-	proc_runners.CleanupTiles(*inDir, *zoomLvl, *workersOpt)
+	runners.CleanupTiles(*inDir, *zoomLvl, *workersOpt)
 
 }

@@ -8,7 +8,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -185,34 +184,34 @@ func uploadFileToBucket(uploader *s3manager.Uploader, bucketName string, objectK
 	return nil
 }
 
-func printBucketItems(svc *s3.S3, bucketName string) {
-	resp, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(bucketName)})
-	if err != nil {
-		exitErrorf("Unable to list items in bucket %q, %v", bucketName, err)
-	}
+// func printBucketItems(svc *s3.S3, bucketName string) {
+// 	resp, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(bucketName)})
+// 	if err != nil {
+// 		exitErrorf("Unable to list items in bucket %q, %v", bucketName, err)
+// 	}
 
-	for _, item := range resp.Contents {
-		fmt.Println("Name:         ", *item.Key)
-		fmt.Println("Last modified:", *item.LastModified)
-		fmt.Println("Size:         ", *item.Size)
-		fmt.Println("Storage class:", *item.StorageClass)
-		fmt.Println("")
-	}
-}
+// 	for _, item := range resp.Contents {
+// 		fmt.Println("Name:         ", *item.Key)
+// 		fmt.Println("Last modified:", *item.LastModified)
+// 		fmt.Println("Size:         ", *item.Size)
+// 		fmt.Println("Storage class:", *item.StorageClass)
+// 		fmt.Println("")
+// 	}
+// }
 
-func printBuckets(svc *s3.S3) {
-	result, err := svc.ListBuckets(nil)
-	if err != nil {
-		exitErrorf("Unable to list buckets, %v", err)
-	}
+// func printBuckets(svc *s3.S3) {
+// 	result, err := svc.ListBuckets(nil)
+// 	if err != nil {
+// 		exitErrorf("Unable to list buckets, %v", err)
+// 	}
 
-	fmt.Println("Buckets:")
+// 	fmt.Println("Buckets:")
 
-	for _, b := range result.Buckets {
-		fmt.Printf("* %s created on %s\n",
-			aws.StringValue(b.Name), aws.TimeValue(b.CreationDate))
-	}
-}
+// 	for _, b := range result.Buckets {
+// 		fmt.Printf("* %s created on %s\n",
+// 			aws.StringValue(b.Name), aws.TimeValue(b.CreationDate))
+// 	}
+// }
 
 func exitErrorf(msg string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, msg+"\n", args...)

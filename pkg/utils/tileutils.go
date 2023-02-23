@@ -26,7 +26,7 @@ func (t *Tile) GetPath() string {
 	return filepath.Join(zStr, xStr, yStr)
 }
 
-func (t *Tile) getPathZX() string {
+func (t *Tile) GetPathZX() string {
 	xStr := strconv.Itoa(t.X)
 	zStr := strconv.Itoa(t.Z)
 	return filepath.Join(zStr, xStr)
@@ -39,15 +39,13 @@ func (t *Tile) GetPathXY() string {
 }
 
 func (t *Tile) GetXYString() string {
-	// xStr := strconv.Itoa(t.X)
-	// yStr := strconv.Itoa(t.Y)
+
 	toJoin := []string{strconv.Itoa(t.X), strconv.Itoa(t.Y)}
 	return strings.Join(toJoin, "")
 }
 
 func (t *Tile) GetXYInt() int {
-	// xStr := strconv.Itoa(t.X)
-	// yStr := strconv.Itoa(t.Y)
+
 	toJoin := []string{strconv.Itoa(t.X), strconv.Itoa(t.Y)}
 	i, _ := strconv.Atoi(strings.Join(toJoin, ""))
 
@@ -91,8 +89,8 @@ func PathToTile(path string) (Tile, string) {
 	fdir = filepath.Dir(fdir)
 	basepath := fdir
 
-	x, err := strconv.Atoi(xStr)
-	y, err := strconv.Atoi(yStr)
+	x, _ := strconv.Atoi(xStr)
+	y, _ := strconv.Atoi(yStr)
 	z, err := strconv.Atoi(zStr)
 
 	if err != nil {
@@ -111,7 +109,7 @@ type Point struct {
 }
 
 func NewPoint(x string, y string) (Point, error) {
-	xint, err := strconv.Atoi(x)
+	xint, _ := strconv.Atoi(x)
 	yint, err := strconv.Atoi(y)
 	if err != nil {
 		log.Error().Msg("Couldn't parse x/y string")
@@ -237,7 +235,7 @@ func (b *BBox) isBBoxWhite(basepath string, z int) bool {
 		for iy := b.Origin().Y; iy <= b.Extent().Y; iy++ {
 			tile := Tile{X: ix, Y: iy, Z: z}
 			imgFile := filepath.Join(basepath, tile.GetPath()+".png")
-			if !canDeleteImg(imgFile) {
+			if !isImgWhiteOrTransparent(imgFile) {
 				return false
 			}
 		}
@@ -249,16 +247,16 @@ func ZeroBBox() BBox {
 	return BBox{x0: 0, y0: 0, x1: 0, y1: 0}
 }
 
-//GetBBoxIntersect returns the BBox formed when two other BBoxes intersect,
-//aka the union of those BBoxes.
-//If the passed BBoxes don't intersect, an error will be returned.
+// GetBBoxIntersect returns the BBox formed when two other BBoxes intersect,
+// aka the union of those BBoxes.
+// If the passed BBoxes don't intersect, an error will be returned.
 func GetBBoxIntersect(b1 BBox, b2 BBox) (BBox, error) {
 	var err error = nil
 	var intersect BBox
 	orig := Point{X: Max(b1.x0, b2.x0), Y: Max(b1.y0, b2.y0)}
 	extent := Point{X: Min(b1.x1, b2.x1), Y: Min(b1.y1, b2.y1)}
 	if orig.X > extent.X || orig.Y > extent.Y {
-		err = errors.New("Invalid BBox: no intersection")
+		err = errors.New("invalid BBox: no intersection")
 	} else {
 		intersect = BBx(orig, extent)
 	}
@@ -271,7 +269,7 @@ func GetBBoxMerge(b1 BBox, b2 BBox) (BBox, error) {
 	orig := Point{X: Min(b1.x0, b2.x0), Y: Min(b1.y0, b2.y0)}
 	extent := Point{X: Max(b1.x1, b2.x1), Y: Max(b1.y1, b2.y1)}
 	if orig.X > extent.X || orig.Y > extent.Y {
-		err = errors.New("Invalid BBox: Invalid Merge")
+		err = errors.New("invalid BBox: Invalid Merge")
 	} else {
 		outersect = BBx(orig, extent)
 	}

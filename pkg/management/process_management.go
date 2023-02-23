@@ -1,4 +1,5 @@
-package proc_mgmt
+// Package management contains infrastructure for managing processes
+package management
 
 import (
 	"fmt"
@@ -8,11 +9,11 @@ import (
 type ProcessState int
 
 const (
-	ProcessState_Running ProcessState = iota
-	ProcessState_Finished
-	ProcessState_Stopped
-	ProcessState_Failed
-	ProcessState_Unknown
+	ProcessStateRunning ProcessState = iota
+	ProcessStateFinished
+	ProcessStateStopped
+	ProcessStateFailed
+	ProcessStateUnknown
 )
 
 type ProcessExecutor interface {
@@ -71,7 +72,7 @@ func (chain *OpenlandTaskChain) Lock() {
 	chain.chainLocked = true
 }
 
-// basic queue implementation with enqueue and dequeue methods
+// ExecutionQueue is a basic queue implementation with enqueue and dequeue methods
 type ExecutionQueue struct {
 	toExecute []*OpenlandTaskChain
 }
@@ -157,9 +158,9 @@ func (pm *ProcessManager) RunTaskChain(pid int) {
 	log.Printf("Starting chain %s", process.Name)
 	for _, task := range process.Tasks {
 
-		task.State = ProcessState_Running
+		task.State = ProcessStateRunning
 		(*task.Handler).Run()
-		task.State = ProcessState_Finished
+		task.State = ProcessStateFinished
 	}
 	delete(pm.Processes, pid)
 	pm.ProcessCount--

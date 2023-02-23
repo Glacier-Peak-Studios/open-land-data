@@ -26,9 +26,27 @@ func runAndWriteCommand(outName, cmdName string, args ...string) error {
 	return nil
 }
 
-func RunCommand(silent bool, cmd string, args ...string) (string, error) {
-	out, err := exec.Command(cmd, args...).Output()
-	if !silent {
+type CmdOpts struct {
+	Silent     bool
+	CaptureOut bool
+}
+
+// RunCommandDefault runs the given command with all opts set to false
+func RunCommandDefault(cmd string, args ...string) (string, error) {
+	return RunCommand(CmdOpts{}, cmd, args...)
+}
+
+// RunCommand runs the given command with the given options
+func RunCommand(opts CmdOpts, cmd string, args ...string) (string, error) {
+	var out []byte
+	var err error
+	if opts.CaptureOut {
+		out, err = exec.Command(cmd, args...).Output()
+	} else {
+		err = exec.Command(cmd, args...).Run()
+	}
+
+	if !opts.Silent {
 		log.Debug().Msgf("%s\n", out)
 	}
 	if err != nil {
@@ -38,21 +56,10 @@ func RunCommand(silent bool, cmd string, args ...string) (string, error) {
 	return string(out), nil
 }
 
-func RunCommand2(silent bool, captureOut bool, cmd string, args ...string) (string, error) {
-	var out []byte
-	var err error
-	if captureOut {
-		out, err = exec.Command(cmd, args...).Output()
-	} else {
-		err = exec.Command(cmd, args...).Run()
+// CommandRunner takes in options for running a command and
+// returns a function to run a given command with those options
+func CommandRunner(opts CmdOpts) func(cmd string, args ...string) (string, error) {
+	return func(cmd string, args ...string) (string, error) {
+		return RunCommand(opts, cmd, args...)
 	}
-
-	if !silent {
-		log.Debug().Msgf("%s\n", out)
-	}
-	if err != nil {
-		log.Warn().Msg("Command unsuccessful: " + cmd + " " + strings.Join(args, " "))
-		return "", err
-	}
-	return string(out), nil
 }

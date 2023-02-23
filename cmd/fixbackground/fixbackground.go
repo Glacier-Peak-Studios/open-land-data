@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
-	"glacierpeak.app/openland/pkg/proc_runners"
+	"glacierpeak.app/openland/pkg/runners"
 	"glacierpeak.app/openland/pkg/utils"
 )
 
@@ -34,17 +34,13 @@ func main() {
 	switch *verboseOpt {
 	case 0:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
-		break
 	case 1:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-		break
 	case 2:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		break
 	case 3:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-		break
 	default:
 		break
 	}
@@ -56,6 +52,6 @@ func main() {
 	// 	zMax, _ = strconv.Atoi(rng[1])
 	// }
 	// log.Info().Msgf("Generating zoom from %v to %v", zMax, zMin)
-	proc_runners.FixBackground(*inDir, *outDir, *workersOpt, *zLevel)
+	runners.FixBackground(*inDir, *outDir, *workersOpt, *zLevel)
 	// CreateOverviewRange(zMax, zMin, *inDir, *workersOpt)
 }

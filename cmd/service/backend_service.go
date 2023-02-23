@@ -10,8 +10,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
-	"glacierpeak.app/openland/pkg/proc_mgmt"
-	"glacierpeak.app/openland/pkg/proc_runners"
+	"glacierpeak.app/openland/pkg/management"
 )
 
 func main() {
@@ -67,7 +66,7 @@ func main() {
 
 	// port := os.Getenv("OLPORT")
 
-	processManager := proc_mgmt.NewProcessManager()
+	processManager := management.NewProcessManager()
 
 	// Starts a new Gin instance with no middle-ware
 	r := gin.New()
@@ -76,14 +75,14 @@ func main() {
 	go processManager.Start()
 	log.Printf("Started process manager")
 
-	mockTaskChain := proc_mgmt.NewOpenlandTaskChain("mockTaskChain")
-	toTiffExecutor := proc_runners.NewPDF2TIFFExecutor("./inDir", "./outDir", []string{"filt1", "filt2"}, "700", 4)
-	tilOverviewExecutor := proc_runners.NewMassTileMergeExecutor("./inDir", "./outDir", "17", 4)
-	mockTask1 := proc_mgmt.NewOpenlandTask("mockTask1", toTiffExecutor)
-	mockTask2 := proc_mgmt.NewOpenlandTask("mockTask2", tilOverviewExecutor)
+	mockTaskChain := management.NewOpenlandTaskChain("mockTaskChain")
+	// toTiffExecutor := runners.NewPDF2TIFFExecutor("./inDir", "./outDir", []string{"filt1", "filt2"}, "700", 4)
+	// tilOverviewExecutor := runners.NewMassTileMergeExecutor("./inDir", "./outDir", "17", 4)
+	// mockTask1 := management.NewOpenlandTask("mockTask1", toTiffExecutor)
+	// mockTask2 := management.NewOpenlandTask("mockTask2", tilOverviewExecutor)
 
-	mockTaskChain.AddTask(mockTask1)
-	mockTaskChain.AddTask(mockTask2)
+	// mockTaskChain.AddTask(mockTask1)
+	// mockTaskChain.AddTask(mockTask2)
 	processManager.Pause()
 	processManager.QueueTaskChain(mockTaskChain)
 	// processManager.AddTaskChain(mockTaskChain)
@@ -96,10 +95,10 @@ func main() {
 
 type HandlerMap struct {
 	name     string
-	handlers []*proc_mgmt.ProcessExecutable
+	handlers []*management.ProcessExecutable
 }
 
-func setupGin(r *gin.Engine, processManager *proc_mgmt.ProcessManager) {
+func setupGin(r *gin.Engine, processManager *management.ProcessManager) {
 	// Define handlers
 	r.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello World!")
@@ -125,7 +124,7 @@ func setupGin(r *gin.Engine, processManager *proc_mgmt.ProcessManager) {
 		tasks := make([]*HandlerMap, 0)
 
 		for _, taskChain := range queue.Items() {
-			handlers := make([]*proc_mgmt.ProcessExecutable, 0)
+			handlers := make([]*management.ProcessExecutable, 0)
 			for _, task := range taskChain.Tasks {
 				handlerVal := (*task.Handler).Value()
 				log.Printf("Handler value: %v", *handlerVal)

@@ -95,7 +95,7 @@ func downloadFTP(path string, u *url.URL) (string, error) {
 func downloadBox(path, boxpath string) (string, error) {
 	boxdir, exists := os.LookupEnv("BOXPATH")
 	if !exists {
-		return "", errors.New("Failed to fetch box source: BOXPATH env not set")
+		return "", errors.New("failed to fetch box source: BOXPATH env not set")
 	}
 	log.Debug().Msgf("BOXPATH=%v", boxdir)
 	pathIn := strings.Replace(boxpath, "box://", "file://"+boxdir+"/", 1)
@@ -105,7 +105,7 @@ func downloadBox(path, boxpath string) (string, error) {
 func downloadLocalFile(pathOut, pathIn string) (string, error) {
 	log.Debug().Msgf("local file is: %v", pathIn)
 	pathIn = strings.Replace(pathIn, "file://", "", 1)
-	_, err := RunCommand(false, "cp", "-r", pathIn, pathOut)
+	_, err := RunCommandDefault("cp", "-r", pathIn, pathOut)
 	if err != nil {
 		log.Warn().Msgf("Could not copy local file: %v to %v", pathIn, pathOut)
 		return "", err

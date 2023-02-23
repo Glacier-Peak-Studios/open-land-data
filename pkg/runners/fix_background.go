@@ -1,7 +1,6 @@
-package proc_runners
+package runners
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -61,24 +60,24 @@ func FixBackground(dir string, out string, workers int, zLvl string) {
 	log.Warn().Msg("Done with all jobs")
 }
 
-type FixBackgroundExecutor struct {
-	Dir  string
-	Out  string
-	ZLvl string
-}
+// type FixBackgroundExecutor struct {
+// 	Dir  string
+// 	Out  string
+// 	ZLvl string
+// }
 
-func NewFixBackgroundExecutor(dir string, out string, zLvl string) *FixBackgroundExecutor {
-	return &FixBackgroundExecutor{dir, out, zLvl}
-}
+// func NewFixBackgroundExecutor(dir string, out string, zLvl string) *FixBackgroundExecutor {
+// 	return &FixBackgroundExecutor{dir, out, zLvl}
+// }
 
-func (m *FixBackgroundExecutor) Value() string {
-	return fmt.Sprintf("FixBackground: In:%s, Out:%s, ZLvl:%s", m.Dir, m.Out, m.ZLvl)
-}
+// func (fbe *FixBackgroundExecutor) Value() string {
+// 	return fmt.Sprintf("FixBackground: In:%s, Out:%s, ZLvl:%s", fbe.Dir, fbe.Out, fbe.ZLvl)
+// }
 
-func (c *FixBackgroundExecutor) Args() []string {
-	return []string{"dir", "out", "zlvl"}
-}
+// func (fbe *FixBackgroundExecutor) Args() []string {
+// 	return []string{"dir", "out", "zlvl"}
+// }
 
-func (fbe *FixBackgroundExecutor) Run() {
-	FixBackground(fbe.Dir, fbe.Out, 1, fbe.ZLvl)
-}
+// func (fbe *FixBackgroundExecutor) Run() {
+// 	FixBackground(fbe.Dir, fbe.Out, 1, fbe.ZLvl)
+// }

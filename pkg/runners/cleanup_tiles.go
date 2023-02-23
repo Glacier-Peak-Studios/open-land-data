@@ -1,7 +1,7 @@
-package proc_runners
+package runners
 
 import (
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -12,11 +12,11 @@ import (
 )
 
 func CleanupTiles(inDir string, zoomLvl int, workers int) {
-	files, _ := ioutil.ReadDir(inDir)
-	files = utils.FilterFI(files, func(file os.FileInfo) bool {
+	files, _ := os.ReadDir(inDir)
+	files = utils.Filter(files, func(file fs.DirEntry) bool {
 		return file.IsDir()
 	})
-	sources := utils.MapFI(files, func(file os.FileInfo) string {
+	sources := utils.Map(files, func(file fs.DirEntry) string {
 		return filepath.Join(inDir, file.Name())
 	})
 
@@ -73,24 +73,24 @@ func queueCTSources(sources []string, jobs chan<- string) {
 	progBar.Finish()
 }
 
-type CleanTilesExecutor struct {
-	inDir   string
-	zoomLvl int
-	workers int
-}
+// type CleanTilesExecutor struct {
+// 	inDir   string
+// 	zoomLvl int
+// 	workers int
+// }
 
-func NewCleanTilesExecutor(inDir string, zoomLvl int, workers int) *CleanTilesExecutor {
-	return &CleanTilesExecutor{
-		inDir:   inDir,
-		zoomLvl: zoomLvl,
-		workers: workers,
-	}
-}
+// func NewCleanTilesExecutor(inDir string, zoomLvl int, workers int) *CleanTilesExecutor {
+// 	return &CleanTilesExecutor{
+// 		inDir:   inDir,
+// 		zoomLvl: zoomLvl,
+// 		workers: workers,
+// 	}
+// }
 
-func (m *CleanTilesExecutor) Value() interface{} {
-	return &m
-}
+// func (cte *CleanTilesExecutor) Value() interface{} {
+// 	return &cte
+// }
 
-func (c *CleanTilesExecutor) Run() {
-	CleanupTiles(c.inDir, c.zoomLvl, c.workers)
-}
+// func (cte *CleanTilesExecutor) Run() {
+// 	CleanupTiles(cte.inDir, cte.zoomLvl, cte.workers)
+// }

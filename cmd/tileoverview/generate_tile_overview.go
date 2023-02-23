@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
-	"glacierpeak.app/openland/pkg/proc_runners"
+	"glacierpeak.app/openland/pkg/runners"
 	"glacierpeak.app/openland/pkg/utils"
 )
 
@@ -40,7 +40,7 @@ func main() {
 	}
 	log.Info().Msgf("Generating zoom from %v to %v", zMax, zMin)
 
-	proc_runners.CreateOverviewRange(zMax, zMin, *inDir, *workersOpt)
+	runners.CreateOverviewRange(zMax, zMin, *inDir, *workersOpt)
 
 }
 

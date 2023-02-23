@@ -23,17 +23,13 @@ func main() {
 	switch *verboseOpt {
 	case 0:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
-		break
 	case 1:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-		break
 	case 2:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-		break
 	case 3:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-		break
 	default:
 		break
 	}
@@ -46,7 +42,7 @@ func main() {
 	println("Reading in file", *in)
 	filterLayers := utils.ReadInFilterList(*in)
 	allLayers := utils.ReadInFilterList(*in2)
-	filteredLayers := utils.Filter2(allLayers, filterLayers, utils.RemoveLayer)
+	filteredLayers := utils.FilterByList(allLayers, filterLayers, utils.RemoveLayer)
 	println("Printing filtered layers:")
 
 	for _, layer := range filteredLayers {
