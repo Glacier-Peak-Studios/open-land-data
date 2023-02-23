@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 // ProcessSource formats source data specified by a .json
@@ -16,7 +16,7 @@ func ProcessSource(dir string, file string) error {
 	// 	fmt.Println("Time to debug!")
 	// }
 	pathedFile := dir + "/" + file
-	sourceJSON := fileToStr(pathedFile)
+	sourceJSON := FileToStr(pathedFile)
 	sourceURL := getPropFromJSON("url", sourceJSON)
 	dlPath := strings.Replace(dir, "land-sources", "generated", 1)
 	dlurl, _ := url.Parse(sourceURL)
@@ -28,12 +28,12 @@ func ProcessSource(dir string, file string) error {
 			return err
 		}
 	} else {
-		log.Debug("DL exists: " + dlFile)
+		log.Debug().Msg("DL exists: " + dlFile)
 	}
 	if filepath.Ext(dlFile) == ".zip" {
 		dlPath = dlPath + "/" + getFnameOnly(dlFile)
-		if !dirExists(dlPath) {
-			_, err := runCommand(true, "unzip", "-j", dlFile, "-d", dlPath)
+		if !DirExists(dlPath) {
+			_, err := RunCommand(CmdOpts{Silent: true}, "unzip", "-j", dlFile, "-d", dlPath)
 			if err != nil {
 				return err
 			}
@@ -72,7 +72,7 @@ func processGeoJSON(path, filename string, fnameOut ...string) error {
 	geojsonLabels := fileWithPath + "-labels.geojson"
 	mbtiles := fileWithPath + ".mbtiles"
 	mbtilesLabels := fileWithPath + "-labels.mbtiles"
-	log.Debug("Processing geoJson: " + geojson)
+	log.Debug().Msg("Processing geoJson: " + geojson)
 	var err error
 
 	err = generateLabels(geojsonLabels, geojson)
@@ -114,8 +114,8 @@ func processShp(path, filename, fileOutName string) error {
 			return err
 		}
 		if len(shapefiles) > 1 {
-			log.Debug("shapefiles-in-dir: ", shapefiles)
-			return errors.New("Multiple shapefiles in zip, none specified in source")
+			log.Debug().Msgf("shapefiles-in-dir: %v", shapefiles)
+			return errors.New("multiple shapefiles in zip, none specified in source")
 		}
 		if len(shapefiles) == 0 {
 			return errors.New("No shapefiles in folder: " + path)
@@ -129,12 +129,12 @@ func processShp(path, filename, fileOutName string) error {
 	geojson := basepath + "/" + fileOutName + ".geojson"
 	shapefile := fileWithPath + ".shp"
 	var err error
-	log.Debug("Processing shapefile: " + shapefile)
+	log.Debug().Msg("Processing shapefile: " + shapefile)
 	if !fileExists(geojson) {
 		if !fileExists(shapefile) {
 			return errors.New("Cannot convert shp to geojson - shp doesn't exist: " + shapefile)
 		}
-		_, err := runCommand(false, "ogr2ogr", "-f", "GeoJSON", "-t_srs", "crs:84", geojson, shapefile)
+		_, err := RunCommandDefault("ogr2ogr", "-f", "GeoJSON", "-t_srs", "crs:84", geojson, shapefile)
 		if err != nil {
 			return err
 		}
@@ -151,8 +151,8 @@ func processKml(path, filename, fileOutName string) error {
 			return err
 		}
 		if len(kmlfiles) > 1 {
-			log.Debug("kmlfiles-in-dir: ", kmlfiles)
-			return errors.New("Multiple kmlfiles in zip, none specified in source")
+			log.Debug().Msgf("kmlfiles-in-dir: %v", kmlfiles)
+			return errors.New("multiple kmlfiles in zip, none specified in source")
 		}
 		if len(kmlfiles) == 0 {
 			return errors.New("No kmlfiles in folder: " + path)
@@ -166,12 +166,12 @@ func processKml(path, filename, fileOutName string) error {
 	geojson := basepath + "/" + fileOutName + ".geojson"
 	kmlfile := fileWithPath + ".kml"
 	var err error
-	log.Debug("Processing kmlfile: " + kmlfile)
+	log.Debug().Msg("Processing kmlfile: " + kmlfile)
 	if !fileExists(geojson) {
 		if !fileExists(kmlfile) {
 			return errors.New("Cannot convert kml to geojson - kml doesn't exist: " + kmlfile)
 		}
-		_, err := runCommand(false, "ogr2ogr", "-f", "GeoJSON", "-t_srs", "crs:84", geojson, kmlfile)
+		_, err := RunCommandDefault("ogr2ogr", "-f", "GeoJSON", "-t_srs", "crs:84", geojson, kmlfile)
 		if err != nil {
 			return err
 		}
@@ -188,8 +188,8 @@ func processKmz(path, filename, fileOutName string) error {
 			return err
 		}
 		if len(kmzfiles) > 1 {
-			log.Debug("kmzfiles-in-dir: ", kmzfiles)
-			return errors.New("Multiple kmzfiles in zip, none specified in source")
+			log.Debug().Msgf("kmzfiles-in-dir: %v", kmzfiles)
+			return errors.New("multiple kmzfiles in zip, none specified in source")
 		}
 		if len(kmzfiles) == 0 {
 			return errors.New("No kmzfiles in folder: " + path)
@@ -197,8 +197,8 @@ func processKmz(path, filename, fileOutName string) error {
 		filename = filepath.Base(kmzfiles[0])
 	}
 	folderPath := path + "/" + getFnameOnly(filename)
-	if !dirExists(folderPath) {
-		_, err := runCommand(true, "unzip", "-j", path+"/"+filename, "-d", folderPath)
+	if !DirExists(folderPath) {
+		_, err := RunCommand(CmdOpts{Silent: true}, "unzip", "-j", path+"/"+filename, "-d", folderPath)
 		if err != nil {
 			return err
 		}
@@ -214,7 +214,7 @@ func generateLabels(newfile, geojson string) error {
 		}
 		return runAndWriteCommand(newfile, "geojson-polygon-labels", "--label=polylabel", "--include-minzoom=1-11", geojson)
 	}
-	log.Info(newfile, " already exists, skipping. Use -f to regenerate")
+	log.Info().Msg(newfile + " already exists, skipping. Use -f to regenerate")
 	return nil
 }
 
@@ -223,10 +223,10 @@ func generateMBTiles(newfile, geojson string) error {
 		if !fileExists(geojson) {
 			return errors.New("Cannot create mbtile! geojson doesn't exist: " + geojson)
 		}
-		_, err := runCommand(false, "tippecanoe", "-f", "-z11", "-o", newfile, geojson)
+		_, err := RunCommandDefault("tippecanoe", "-f", "-z11", "-o", newfile, geojson)
 		return err
 	}
-	log.Info(newfile, " already exists, skipping. Use -f to regenerate")
+	log.Info().Msg(newfile + " already exists, skipping. Use -f to regenerate")
 	return nil
 }
 
@@ -238,9 +238,9 @@ func combineMBTiles(newfile, mbtiles, mbtilesLabels string) error {
 		if !fileExists(mbtilesLabels) {
 			return errors.New("Cannot join mbtiles! labels mbtile doesn't exist: " + mbtilesLabels)
 		}
-		_, err := runCommand(false, "tile-join", "-f", "-o", newfile, mbtiles, mbtilesLabels)
+		_, err := RunCommandDefault("tile-join", "-f", "-o", newfile, mbtiles, mbtilesLabels)
 		return err
 	}
-	log.Info(newfile, " already exists, skipping. Use -f to regenerate")
+	log.Info().Msg(newfile + " already exists, skipping. Use -f to regenerate")
 	return nil
 }
