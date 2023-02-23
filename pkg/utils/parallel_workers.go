@@ -3,7 +3,6 @@ package utils
 
 import (
 	"image"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -294,7 +293,7 @@ func TileCleanupWorker(jobs <-chan string, results chan<- string, zoom int) {
 			// CleanBBoxEdge(checkLine, side, basepath, zoom)
 
 		}
-		lvlDirs, _ := ioutil.ReadDir(workingPath)
+		lvlDirs, _ := os.ReadDir(workingPath)
 		for _, dir := range lvlDirs {
 			path := filepath.Join(workingPath, dir.Name())
 			empty, _ := IsEmpty(path)
@@ -310,14 +309,14 @@ func TilesetListWorker(jobs <-chan string, results chan<- string, workersDone *u
 	// defer wg.Done()
 	for job := range jobs {
 		// dirWithZ := job
-		xList, err := ioutil.ReadDir(job)
+		xList, err := os.ReadDir(job)
 		if err != nil {
 			log.Error().Err(err).Msgf("Could not read z dir: %v", job)
 		} else {
 			// var tileList []string
 			for _, xDir := range xList {
 				if xDir.IsDir() {
-					tiles, err := ioutil.ReadDir(filepath.Join(job, xDir.Name()))
+					tiles, err := os.ReadDir(filepath.Join(job, xDir.Name()))
 					if err != nil {
 						log.Error().Err(err).Msgf("Could not read x dir: %v", job)
 					} else {
@@ -344,7 +343,7 @@ func TilesetListWorker(jobs <-chan string, results chan<- string, workersDone *u
 func TilesetListWorkerStreamed(searchDirs <-chan string, filesFound chan<- string, workersDone *uint64, workerCount uint64) {
 	// defer wg.Done()
 	for dir := range searchDirs {
-		yList, err := ioutil.ReadDir(dir)
+		yList, err := os.ReadDir(dir)
 		if err != nil {
 			log.Error().Err(err).Msgf("Could not read z dir: %v", dir)
 		} else {

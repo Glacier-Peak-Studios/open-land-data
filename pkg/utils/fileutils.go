@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,7 +42,7 @@ func StripExt(file string) string {
 }
 
 func FileToStr(file string) string {
-	content, err := ioutil.ReadFile(file)
+	content, err := os.ReadFile(file)
 	if err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
@@ -86,7 +85,7 @@ func WalkMatch(root string, pattern string) ([]string, error) {
 
 func GetAllTiles2(root string, workers int) []string {
 
-	dirsList, err := ioutil.ReadDir(root)
+	dirsList, err := os.ReadDir(root)
 	if err != nil {
 		log.Error().Err(err).Msg("Error reading sources list")
 	}
@@ -130,7 +129,7 @@ func GetAllTiles2(root string, workers int) []string {
 }
 
 func GetAllTilesStreamed(root string, workerCount int, foundTiles chan<- string) {
-	dirsList, err := ioutil.ReadDir(root)
+	dirsList, err := os.ReadDir(root)
 	if err != nil {
 		log.Error().Err(err).Msg("Error reading sources list")
 	}
@@ -149,7 +148,7 @@ func GetAllTilesStreamed(root string, workerCount int, foundTiles chan<- string)
 
 	for _, dir := range dirsList {
 		if dir.IsDir() {
-			xlist, err := ioutil.ReadDir(filepath.Join(root, dir.Name()))
+			xlist, err := os.ReadDir(filepath.Join(root, dir.Name()))
 			if err != nil {
 				log.Error().Err(err).Msg("Error reading sources list")
 			}
@@ -171,7 +170,7 @@ func GetAllTilesStreamed(root string, workerCount int, foundTiles chan<- string)
 }
 
 func GetAllTiles0(root string, zLvl string, workers int) (map[int][]string, []Tile) {
-	dirsList, err := ioutil.ReadDir(root)
+	dirsList, err := os.ReadDir(root)
 	if err != nil {
 		log.Error().Err(err).Msg("Error reading sources list")
 	}
@@ -255,7 +254,7 @@ func CleanJob(job string) error {
 }
 
 func BBoxFromTileset(path string) (BBox, error) {
-	xrange, err := ioutil.ReadDir(path)
+	xrange, err := os.ReadDir(path)
 	if err != nil {
 		log.Error().Msg("Couldn't read source dir")
 		return ZeroBBox(), err
@@ -265,8 +264,8 @@ func BBoxFromTileset(path string) (BBox, error) {
 
 	x0Path := filepath.Join(path, x0)
 	x1Path := filepath.Join(path, x1)
-	x0ListY, _ := ioutil.ReadDir(x0Path)
-	x1ListY, err := ioutil.ReadDir(x1Path)
+	x0ListY, _ := os.ReadDir(x0Path)
+	x1ListY, err := os.ReadDir(x1Path)
 	if err != nil {
 		log.Error().Msg("Couldn't read source dir")
 		return ZeroBBox(), err
@@ -300,7 +299,7 @@ func GetGeoPDFLayers(file string) []string {
 }
 
 func ReadInFilterList(file string) []string {
-	dat, err := ioutil.ReadFile(file)
+	dat, err := os.ReadFile(file)
 	if err != nil {
 		fmt.Print(err)
 	}

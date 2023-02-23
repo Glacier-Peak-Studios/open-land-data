@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -73,7 +72,7 @@ func main() {
 
 func worker(jobs <-chan string, results chan<- string, cleanUp bool) {
 	for job := range jobs {
-		files, err := ioutil.ReadDir(job)
+		files, err := os.ReadDir(job)
 		if err != nil {
 			log.Fatal().Err(err).Msg("")
 		}
@@ -104,7 +103,7 @@ func logMsg(results chan<- string, source, msg string) {
 }
 
 func queueSources(sourceDir string, jobs chan<- string) {
-	files, err := ioutil.ReadDir(sourceDir)
+	files, err := os.ReadDir(sourceDir)
 	if err != nil {
 		log.Fatal().Err(err).Msg("")
 	}

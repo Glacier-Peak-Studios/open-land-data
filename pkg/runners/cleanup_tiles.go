@@ -1,7 +1,7 @@
 package runners
 
 import (
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -12,11 +12,11 @@ import (
 )
 
 func CleanupTiles(inDir string, zoomLvl int, workers int) {
-	files, _ := ioutil.ReadDir(inDir)
-	files = utils.Filter(files, func(file os.FileInfo) bool {
+	files, _ := os.ReadDir(inDir)
+	files = utils.Filter(files, func(file fs.DirEntry) bool {
 		return file.IsDir()
 	})
-	sources := utils.Map(files, func(file os.FileInfo) string {
+	sources := utils.Map(files, func(file fs.DirEntry) string {
 		return filepath.Join(inDir, file.Name())
 	})
 
